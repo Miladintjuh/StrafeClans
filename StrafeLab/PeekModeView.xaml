@@ -1,0 +1,303 @@
+<UserControl x:Class="StrafeLab.PeekModeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+        <Style x:Key="Muted" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style x:Key="MetricValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="30" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Margin" Value="0,4,0,0" />
+        </Style>
+        <Style x:Key="MetricLabel" TargetType="TextBlock" BasedOn="{StaticResource Muted}">
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style x:Key="SmallLabel" TargetType="TextBlock" BasedOn="{StaticResource Muted}">
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Margin" Value="0,0,12,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style TargetType="DataGrid">
+            <Setter Property="Background" Value="{StaticResource CardBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="GridLinesVisibility" Value="None" />
+            <Setter Property="HeadersVisibility" Value="Column" />
+            <Setter Property="RowBackground" Value="#10172A" />
+            <Setter Property="AlternatingRowBackground" Value="#131B30" />
+            <Setter Property="CanUserAddRows" Value="False" />
+            <Setter Property="CanUserDeleteRows" Value="False" />
+            <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="AutoGenerateColumns" Value="False" />
+        </Style>
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#182139" />
+            <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="8" />
+        </Style>
+        <Style TargetType="DataGridCell">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#2B3B63" />
+                    <Setter Property="Foreground" Value="#FFFFFF" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="18" Background="{StaticResource WindowBgBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="4,0,4,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="Peek mode" FontSize="34" FontWeight="Bold" />
+                <TextBlock Text="For 5e_aimhub peek practice: F9 starts/stops a continuous peek session; F8 arms one manual rep." Style="{StaticResource Muted}" />
+                <TextBlock Text="Continuous mode records long side-steps, counter-strafe, shot pattern, and the reset movement. A rep ends on the first A/D movement after the shot sequence." Style="{StaticResource Muted}" Margin="0,3,0,0" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="ArmButton" Content="Arm rep [F8]" Click="ArmButton_Click" Margin="0,0,8,0" />
+                <Button x:Name="ClearButton" Content="Clear" Click="ClearButton_Click" Background="#29324A" Margin="0,0,8,0" IsEnabled="False" />
+                <Button x:Name="LiveViewButton" Content="Live" Click="LiveViewButton_Click" Background="#29324A" Margin="0,0,8,0" />
+                <Button x:Name="ConclusionsButton" Content="Conclusions" Click="ConclusionsButton_Click" Background="#29324A" Margin="0,0,8,0" />
+                <Button Content="Back to trainer" Click="CloseButton_Click" Background="#29324A" />
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition />
+                <ColumnDefinition />
+                <ColumnDefinition />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Status" Style="{StaticResource MetricLabel}" />
+                    <TextBlock x:Name="StatusText" Text="Idle" Style="{StaticResource MetricValue}" />
+                    <TextBlock x:Name="ElapsedText" Text="not recording" Style="{StaticResource Muted}" />
+                    <TextBlock x:Name="ArmStateText" Text="not armed" Style="{StaticResource Muted}" />
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Peek attempts" Style="{StaticResource MetricLabel}" />
+                    <TextBlock x:Name="AttemptCountText" Text="0" Style="{StaticResource MetricValue}" />
+                    <TextBlock x:Name="ShotPatternText" Text="0 taps / 0 sprays" Style="{StaticResource Muted}" />
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="2" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Step left" Style="{StaticResource MetricLabel}" />
+                    <TextBlock x:Name="LeftRateText" Text="0%" Style="{StaticResource MetricValue}" Foreground="{StaticResource Accent2Brush}" />
+                    <TextBlock x:Name="LeftDetailText" Text="0 attempts" Style="{StaticResource Muted}" />
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="3" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Step right" Style="{StaticResource MetricLabel}" />
+                    <TextBlock x:Name="RightRateText" Text="0%" Style="{StaticResource MetricValue}" Foreground="{StaticResource AccentBrush}" />
+                    <TextBlock x:Name="RightDetailText" Text="0 attempts" Style="{StaticResource Muted}" />
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="4" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Focus" Style="{StaticResource MetricLabel}" />
+                    <TextBlock x:Name="FocusText" Text="record attempts" Style="{StaticResource MetricValue}" FontSize="22" TextWrapping="Wrap" />
+                    <TextBlock x:Name="FocusDetailText" Text="direction advice appears after several reps" Style="{StaticResource Muted}" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="PeekLivePanel" Grid.Row="2" Margin="0,8,0,0" SizeChanged="PeekLivePanel_SizeChanged">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.6*" />
+                <ColumnDefinition Width="1.1*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="110" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Live peek timing chart" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock x:Name="ChartInfoText" Text="Y axis is release-to-counter delay. Negative means overlap; positive means a gap before the counter key. Outliers are shown as edge arrows so they do not flatten the graph." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,18,0" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="6,0">
+                        <TextBlock Text="Mode" Style="{StaticResource SmallLabel}" />
+                        <CheckBox x:Name="ManualRepCheckBox" Content="F8 single reps" IsChecked="False" Checked="Filter_Changed" Unchecked="Filter_Changed" />
+                        <StackPanel Visibility="Collapsed">
+                            <TextBox x:Name="CleanMaxBox" Text="45" />
+                            <TextBox x:Name="OverlapToleranceBox" Text="8" />
+                            <TextBox x:Name="SprayHoldBox" Text="180" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Margin="6,0,0,0">
+                        <TextBlock Text="Show" Style="{StaticResource SmallLabel}" />
+                        <WrapPanel>
+                            <CheckBox x:Name="ShowLeftCheckBox" Content="Left" IsChecked="True" Checked="Filter_Changed" Unchecked="Filter_Changed" />
+                            <CheckBox x:Name="ShowRightCheckBox" Content="Right" IsChecked="True" Checked="Filter_Changed" Unchecked="Filter_Changed" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="How to read it" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="Step left means A was held for the peek and D was the counter key. Step right means D was held for the peek and A was the counter key." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    <TextBlock Text="The shot pattern is counted from the counter-strafe until your next A/D movement to reset the plate. A single M1 in that window is treated as a one-tap attempt." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition x:Name="PeekChartRow" Height="300" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition x:Name="PeekTableRow" Height="*" />
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="#080D16" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14" ClipToBounds="True">
+                        <Canvas x:Name="TimingChartCanvas" Background="#080D16" SizeChanged="TimingChartCanvas_SizeChanged" />
+                    </Border>
+                    <WrapPanel Grid.Row="1" Margin="0,10,0,8">
+                        <CheckBox x:Name="ShowTapsCheckBox" Content="Show taps/bursts" IsChecked="True" Checked="Filter_Changed" Unchecked="Filter_Changed" />
+                        <CheckBox x:Name="ShowSpraysCheckBox" Content="Show sprays" IsChecked="True" Checked="Filter_Changed" Unchecked="Filter_Changed" />
+                        <TextBlock Text="F9 continuous: one rep after another until stopped. F8 manual: arm exactly one rep. Click a row to inspect; the selected dot is enlarged." Style="{StaticResource Muted}" VerticalAlignment="Center" />
+                    </WrapPanel>
+                    <DataGrid x:Name="PeekGrid" Grid.Row="2" SelectionMode="Extended" SelectionUnit="FullRow" SelectionChanged="PeekGrid_SelectionChanged" KeyDown="PeekGrid_KeyDown">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="46" />
+                            <DataGridTextColumn Header="Peek" Binding="{Binding StepLabel}" Width="92" />
+                            <DataGridTextColumn Header="C-strafe" Binding="{Binding CounterLabel}" Width="95" />
+                            <DataGridTextColumn Header="C timing" Binding="{Binding CounterDelayLabel}" Width="90" />
+                            <DataGridTextColumn Header="Shot speed" Binding="{Binding ShotSpeedLabel}" Width="92" />
+                            <DataGridTextColumn Header="Shot type" Binding="{Binding ShotPatternLabel}" Width="105" />
+                            <DataGridTextColumn Header="First bullet" Binding="{Binding FirstBulletLabel}" Width="120" />
+                            <DataGridTextColumn Header="Reset" Binding="{Binding ResetLabel}" Width="105" />
+                            <DataGridTextColumn Header="Advice" Binding="{Binding Advice}" Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="190" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Text="Selected attempt" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock x:Name="SelectedSummaryText" Text="Select a row to see the exact mistake and what to practice." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,10" />
+                    </StackPanel>
+                    <Border Grid.Row="1" Background="#08101E" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14" ClipToBounds="True">
+                        <Canvas x:Name="SelectedMouseCanvas" Background="#08101E" SizeChanged="SelectedMouseCanvas_SizeChanged" />
+                    </Border>
+                    <TextBlock Grid.Row="2" Text="Mouse trace starts at the step-out key and continues through counter, shot window, and reset. It helps show whether you matched bot speed, overflicked, or corrected late." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,12" />
+                    <Border Grid.Row="3" Background="#0B1426" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14" Padding="14">
+                        <StackPanel>
+                            <TextBlock Text="Current coaching" FontSize="18" FontWeight="SemiBold" />
+                            <TextBlock x:Name="CoachingText" Text="Start peek mode and record a few left/right reps. Coaching will compare directions and shot patterns." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="PeekConclusionsPanel" Grid.Row="2" Margin="0,8,0,0" Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.25*" />
+                <ColumnDefinition Width="1*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="Peek conclusions" FontSize="20" FontWeight="SemiBold" />
+                        <TextBlock x:Name="PeekConclusionSummaryText" Text="Record a Peek session to compare left/right timing, shot type, shot speed, and crosshair movement." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="Back to live" Click="LiveViewButton_Click" Background="#29324A" VerticalAlignment="Center" Margin="16,0,0,0" />
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Left vs right counter timing" FontSize="18" FontWeight="SemiBold" />
+                    <Canvas x:Name="PeekConclusionTimingCanvas" Grid.Row="1" Background="#080D16" SizeChanged="PeekConclusionCanvas_SizeChanged" />
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Shot pattern after stopping" FontSize="18" FontWeight="SemiBold" />
+                    <Canvas x:Name="PeekConclusionShotCanvas" Grid.Row="1" Background="#080D16" SizeChanged="PeekConclusionCanvas_SizeChanged" />
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" Grid.Column="0" Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Crosshair movement quality" FontSize="18" FontWeight="SemiBold" />
+                    <Canvas x:Name="PeekConclusionMouseCanvas" Grid.Row="1" Background="#080D16" SizeChanged="PeekConclusionCanvas_SizeChanged" />
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" Grid.Column="1" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="What to practice" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PeekConclusionAdviceText" Text="Conclusions appear after several click-confirmed peek reps." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

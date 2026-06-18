@@ -1,0 +1,146 @@
+<UserControl x:Class="StrafeLab.AdminView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+        <Style x:Key="Muted" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style x:Key="MetricValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="28" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+    </UserControl.Resources>
+    <Grid Margin="18" Background="{StaticResource WindowBgBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid Margin="4,0,4,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="Admin stats" FontSize="34" FontWeight="Bold" />
+                <TextBlock x:Name="SubtitleText" Text="Aggregated summary stats from players who chose to share non-personal practice data." Style="{StaticResource Muted}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="ModsButton" Content="Mods (0)" Click="ModsButton_Click" Margin="0,0,8,0" Background="#29324A" ToolTip="Manage users who can view the Admin stats page." />
+                <Button Content="Refresh" Click="RefreshButton_Click" Margin="0,0,8,0" />
+                <Button Content="Back" Click="BackButton_Click" Background="#29324A" />
+            </StackPanel>
+        </Grid>
+        <UniformGrid Grid.Row="1" Columns="5" Margin="0,0,0,8">
+            <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Players" Style="{StaticResource Muted}"/><TextBlock x:Name="PlayersText" Text="0" Style="{StaticResource MetricValue}"/></StackPanel></Border>
+            <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Anonymous" Style="{StaticResource Muted}"/><TextBlock x:Name="AnonymousText" Text="0" Style="{StaticResource MetricValue}"/></StackPanel></Border>
+            <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Sessions" Style="{StaticResource Muted}"/><TextBlock x:Name="SessionsText" Text="0" Style="{StaticResource MetricValue}"/></StackPanel></Border>
+            <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Attempts" Style="{StaticResource Muted}"/><TextBlock x:Name="AttemptsText" Text="0" Style="{StaticResource MetricValue}"/></StackPanel></Border>
+            <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Moving rate" Style="{StaticResource Muted}"/><TextBlock x:Name="MovingRateText" Text="0%" Style="{StaticResource MetricValue}"/></StackPanel></Border>
+        </UniformGrid>
+        <Border Grid.Row="2" Style="{StaticResource Card}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="Player summaries" FontSize="20" FontWeight="SemiBold" />
+                <DataGrid x:Name="PlayersGrid" Grid.Row="1" Margin="0,12,0,0" IsReadOnly="True" AutoGenerateColumns="False">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="*" />
+                        <DataGridCheckBoxColumn Header="Anon" Binding="{Binding IsAnonymous}" Width="70" />
+                        <DataGridTextColumn Header="Sessions" Binding="{Binding Sessions}" Width="90" />
+                        <DataGridTextColumn Header="Attempts" Binding="{Binding Attempts}" Width="90" />
+                        <DataGridTextColumn Header="Clean %" Binding="{Binding CleanRate, StringFormat={}{0:0.#}%}" Width="90" />
+                        <DataGridTextColumn Header="Moving %" Binding="{Binding MovingRate, StringFormat={}{0:0.#}%}" Width="90" />
+                        <DataGridTextColumn Header="Overlap" Binding="{Binding Overlap}" Width="80" />
+                        <DataGridTextColumn Header="Slow" Binding="{Binding Slow}" Width="70" />
+                        <DataGridTextColumn Header="Avg counter" Binding="{Binding AverageCounterDelayMs, StringFormat={}{0:0.0} ms}" Width="110" />
+                        <DataGridTextColumn Header="Avg click" Binding="{Binding AverageClickDelayMs, StringFormat={}{0:0.0} ms}" Width="100" />
+                    </DataGrid.Columns>
+                </DataGrid>
+                <TextBlock x:Name="StatusText" Grid.Row="2" Text="Only summary stats are shown here. Raw key/mouse data stays local on each PC." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,0,0" />
+            </Grid>
+        </Border>
+
+        <Grid x:Name="ModsOverlay" Grid.RowSpan="3" Visibility="Collapsed" Background="#AA000000">
+            <Border Width="720" MaxHeight="720" HorizontalAlignment="Center" VerticalAlignment="Center" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="18" Padding="18">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Moderators" FontSize="24" FontWeight="Bold" />
+                            <TextBlock Text="Mods can view the same shared Admin stats as you. Mods cannot add or remove other mods." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="×" Width="40" Height="34" Click="CloseModsOverlay_Click" Background="#29324A" ToolTip="Close" />
+                    </Grid>
+
+                    <Grid Grid.Row="1" Margin="0,16,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="ModSearchBox" Height="36" VerticalContentAlignment="Center" ToolTip="Search by username or e-mail address." />
+                        <Button Grid.Column="1" Content="Search" Click="SearchModsButton_Click" Margin="8,0,0,0" />
+                    </Grid>
+
+                    <TextBlock x:Name="ModsHelpText" Grid.Row="2" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,10" />
+
+                    <Grid Grid.Row="3">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="180" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="180" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="Current mods" FontSize="16" FontWeight="SemiBold" />
+                        <DataGrid x:Name="ModeratorsGrid" Grid.Row="1" Margin="0,8,0,14" AutoGenerateColumns="False" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="180" />
+                                <DataGridTextColumn Header="E-mail" Binding="{Binding Email}" Width="*" />
+                                <DataGridTemplateColumn Header="" Width="90">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Content="Remove" Click="RemoveModeratorButton_Click" Background="#29324A" Padding="8,4" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock Grid.Row="2" Text="Search results" FontSize="16" FontWeight="SemiBold" />
+                        <DataGrid x:Name="ModSearchResultsGrid" Grid.Row="3" Margin="0,8,0,0" AutoGenerateColumns="False" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Username" Binding="{Binding Username}" Width="180" />
+                                <DataGridTextColumn Header="E-mail" Binding="{Binding Email}" Width="*" />
+                                <DataGridTemplateColumn Header="" Width="80">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Content="Add" Click="AddModeratorButton_Click" Padding="8,4" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+
+                    <TextBlock x:Name="ModsStatusText" Grid.Row="4" Text="" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>
