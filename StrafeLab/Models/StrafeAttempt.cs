@@ -22,61 +22,13 @@ public sealed class StrafeAttempt
     public double? ClickFromReleaseMs => ClickTimeMs.HasValue ? ClickTimeMs.Value - ReleaseTimeMs : null;
     public double? ClickFromCounterMs => ClickTimeMs.HasValue ? ClickTimeMs.Value - OppositeDownTimeMs : null;
     public TimingGrade Grade { get; set; } = TimingGrade.Unrated;
-    public string Diagnosis { get; set; } = "Waiting for shot";
-    public bool IsMovingAtClick { get; set; }
-    public string HeldKeysAtClick { get; set; } = string.Empty;
-    public bool IsExcluded { get; set; }
-    public bool IsJiggle { get; set; }
-    public bool IsAutoTaggedJiggle { get; set; }
     public List<MouseTracePoint> MouseTrace { get; set; } = new();
 
-    public bool HasClick => ClickTimeMs.HasValue;
-
-    public bool IsIncluded
-    {
-        get => !IsExcluded;
-        set => IsExcluded = !value;
-    }
-
     public string Direction => $"{FromKey} -> {ToKey}";
-    public string GradeLabel => Grade switch
-    {
-        TimingGrade.Perfect => "Clean",
-        TimingGrade.Overlap => "Overlap",
-        TimingGrade.Late => "Slow timing",
-        TimingGrade.EarlyClick => "Early shot",
-        TimingGrade.MissedClick => "No shot",
-        _ => "Unrated"
-    };
-
-    public string MistakeLabel
-    {
-        get
-        {
-            var mistakes = new List<string>();
-            if (Grade == TimingGrade.Overlap) mistakes.Add("Overlap");
-            if (Grade == TimingGrade.Late) mistakes.Add("Slow");
-            if (Grade == TimingGrade.EarlyClick) mistakes.Add("Early shot");
-            if (IsMovingAtClick) mistakes.Add("Moving");
-            return mistakes.Count == 0 ? "None" : string.Join(", ", mistakes);
-        }
-    }
-
-    public string ResultLabel
-    {
-        get
-        {
-            if (!HasClick) return "No shot";
-            if (IsMovingAtClick) return "Moving";
-            if (Grade == TimingGrade.EarlyClick) return "Inaccurate";
-            return "Accurate";
-        }
-    }
     public string CounterDelayLabel => $"{CounterDelayMs:+0.0;-0.0;0.0} ms";
-    public string ClickLabel => ClickFromCounterMs.HasValue ? $"{ClickFromCounterMs.Value:+0.0;-0.0;0.0} ms" : "no click";
+    public string ClickLabel => ClickFromCounterMs.HasValue ? $"{ClickFromCounterMs.Value:+0.0;-0.0;0.0} ms" : "-";
     public int TracePoints => MouseTrace.Count;
     public string TracePointsLabel => TracePoints == 0 ? "-" : TracePoints.ToString();
-    public string FilterLabel => IsExcluded ? "Manual exclude" : IsJiggle ? "Jiggle" : !HasClick ? "No click" : "Included";
 
     public int RawEndX => MouseTrace.Count == 0 ? 0 : MouseTrace[^1].XCounts;
     public int RawEndY => MouseTrace.Count == 0 ? 0 : MouseTrace[^1].YCounts;
@@ -91,23 +43,6 @@ public sealed class StrafeAttempt
 
     public string AimDeltaLabel => MouseTrace.Count == 0 ? "-" : $"X {HorizontalDegrees:+0.00;-0.00;0.00} deg, Y {VerticalDegrees:+0.00;-0.00;0.00} deg";
     public string PathLabel => MouseTrace.Count == 0 ? "-" : $"{PathLengthDegrees:0.00} deg / eff {PathEfficiency:0.00}";
-    public string AimControlLabel
-    {
-        get
-        {
-            if (MouseTrace.Count < 3) return "no trace";
-            double eff = PathEfficiency;
-            double path = PathLengthDegrees;
-            double disp = DisplacementDegrees;
-            if (path < 0.03) return "steady";
-            if (eff >= 0.82) return "single line";
-            if (eff >= 0.55 && path <= Math.Max(0.18, disp * 2.1)) return "micro-adjust";
-            if (eff < 0.35 && path > Math.Max(0.18, disp * 3.0)) return "messy";
-            if (path > Math.Max(0.35, disp * 2.35)) return "overflick";
-            return "corrected";
-        }
-    }
-
 
     private double SumPath(Func<MouseTracePoint, MouseTracePoint, double> segment)
     {

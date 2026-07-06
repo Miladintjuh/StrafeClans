@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>StrafeLab</AssemblyName>
+    <RootNamespace>StrafeLab</RootNamespace>
+    <ApplicationIcon>Assets\StrafeLab.ico</ApplicationIcon>
+    <Version>2.2.31</Version>
+    <AssemblyVersion>2.2.31.0</AssemblyVersion>
+    <FileVersion>2.2.31.0</FileVersion>
+    <Authors>StrafeLab</Authors>
+    <Product>StrafeLab</Product>
+    <Description>CS2 counter-strafe and peek-practice stat analyzer</Description>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="Assets\StrafeLab.ico" />
+    <Content Include="DemoData\**\*.*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,23 @@
+index,direction,manual_excluded,is_jiggle,auto_tagged_jiggle,has_click,filter_label,release_ms,opposite_down_ms,counter_delay_ms,click_ms,click_from_release_ms,click_from_counter_ms,grade,mistakes,result,diagnosis,moving_at_click,held_keys_at_click,aim_control,quality_total,quality_timing,quality_shot,quality_mouse,quality_consistency,trace_points,raw_end_x,raw_end_y,horizontal_degrees,vertical_degrees,path_degrees,displacement_degrees,path_efficiency
+1,D -> A,0,0,0,1,Included,3818.485,3808.009,-10.476,3931.687,113.202,123.678,Perfect,None,Accurate,D->A: clean.,0,,no trace,75,20,30,10,15,0,0,0,0,0,0,0,0
+2,D -> A,0,0,0,1,Included,5524.65,5504.832,-19.818,5653.648,128.998,148.816,Perfect,None,Accurate,D->A: clean.,0,,no trace,68,17,30,10,11,0,0,0,0,0,0,0,0
+3,D -> A,0,0,0,1,Included,6243.721,6225.619,-18.101,6362.932,119.211,137.313,Perfect,None,Accurate,D->A: clean.,0,,no trace,68,17,30,10,11,0,0,0,0,0,0,0,0
+5,D -> A,0,0,0,1,Included,6815.387,6795.451,-19.936,6946.805,131.418,151.354,Late,Slow,Accurate,D->A: slow shot: 151 ms after counter.,0,,no trace,68,17,30,10,11,0,0,0,0,0,0,0,0
+7,D -> A,0,0,0,1,Included,7446.93,7413.962,-32.968,7539.804,92.874,125.842,Perfect,None,Accurate,D->A: clean.,0,,no trace,58,11,30,10,7,0,0,0,0,0,0,0,0
+9,D -> A,0,0,0,1,Included,7958.472,7987.276,28.804,8066.272,107.799,78.995,Perfect,None,Accurate,D->A: clean.,0,,no trace,86,35,30,10,11,0,0,0,0,0,0,0,0
+11,D -> A,0,0,0,1,Included,8633.323,8611.811,-21.513,8763.449,130.125,151.638,Late,Slow,Accurate,D->A: slow shot: 152 ms after counter.,0,,no trace,67,16,30,10,11,0,0,0,0,0,0,0,0
+12,D -> A,0,0,0,1,Included,9576.897,9555.162,-21.735,9673.777,96.88,118.615,Perfect,None,Accurate,D->A: clean.,0,,no trace,67,16,30,10,11,0,0,0,0,0,0,0,0
+14,D -> A,0,0,0,1,Included,10373.027,10344.121,-28.905,10454.634,81.608,110.513,Perfect,None,Accurate,D->A: clean.,0,,no trace,64,13,30,10,11,0,0,0,0,0,0,0,0
+15,D -> A,0,0,0,1,Included,11543.456,11584.59,41.134,11642.77,99.313,58.179,Perfect,Moving,Moving,D->A: moving at shot: A held.,1,A,no trace,58,35,6,10,7,0,0,0,0,0,0,0,0
+16,A -> D,0,0,0,1,Included,12561.064,12603.27,42.206,12725.111,164.047,121.841,Perfect,None,Accurate,A->D: clean.,0,,no trace,82,35,30,10,7,0,0,0,0,0,0,0,0
+17,D -> A,0,0,0,1,Included,14497.06,14560.416,63.356,14631.681,134.621,71.265,Perfect,None,Accurate,D->A: clean.,0,,no trace,78,35,30,10,3,0,0,0,0,0,0,0,0
+19,D -> A,0,0,0,1,Included,15122.142,15192.207,70.065,15257.435,135.294,65.228,Perfect,None,Accurate,D->A: clean.,0,,no trace,78,35,30,10,3,0,0,0,0,0,0,0,0
+21,D -> A,0,0,0,1,Included,15818.952,15893.329,74.377,15962.556,143.604,69.227,Perfect,None,Accurate,D->A: clean.,0,,no trace,78,35,30,10,3,0,0,0,0,0,0,0,0
+23,D -> A,0,0,0,1,Included,16779.153,16809.421,30.269,16933.794,154.641,124.372,Perfect,None,Accurate,D->A: clean.,0,,no trace,82,35,30,10,7,0,0,0,0,0,0,0,0
+25,D -> A,0,0,0,1,Included,17797.31,17830.707,33.397,17969.115,171.805,138.408,Perfect,None,Accurate,D->A: clean.,0,,no trace,82,35,30,10,7,0,0,0,0,0,0,0,0
+27,D -> A,0,0,0,1,Included,18687.679,18734.246,46.567,18874.282,186.603,140.036,Perfect,None,Accurate,D->A: clean.,0,,no trace,82,35,30,10,7,0,0,0,0,0,0,0,0
+28,A -> D,0,0,0,1,Included,21203.696,21319.371,115.675,21400.915,197.219,81.544,Late,Slow,Accurate,A->D: late: 116 ms gap before D.,0,,single line,71,18,30,20,3,8,-45,16,-0.396,0.1408,0.345223,0.420286,1.217436
+30,A -> D,0,0,0,1,Included,21682.442,21722.276,39.834,21794.912,112.47,72.636,Perfect,Moving,Moving,A->D: moving at shot: D held.,1,D,no trace,58,35,6,10,7,0,0,0,0,0,0,0,0
+31,D -> A,0,0,0,1,Included,21834.807,21943.204,108.398,22151.02,316.213,207.815,Late,Slow,Accurate,D->A: late: 108 ms gap before A; slow shot: 208 ms after counter.,0,,no trace,57,21,23,10,3,2,-2,3,-0.0176,0.0264,0.0088,0.031729,3.605551
+34,A -> D,0,0,0,1,Included,22491.983,22553.136,61.153,22609.529,117.545,56.392,Perfect,Moving,Moving,A->D: moving at shot: D held.,1,D,no trace,54,35,6,10,3,0,0,0,0,0,0,0,0
+36,D -> A,0,0,0,1,Included,24530.403,24449.018,-81.385,24593.969,63.566,144.951,Overlap,"Overlap, Moving",Moving,D->A: overlap: A down before D up; moving at shot: A held.,1,A,no trace,19,0,6,10,3,1,1,-2,0.0088,-0.0176,0,0.019677,0

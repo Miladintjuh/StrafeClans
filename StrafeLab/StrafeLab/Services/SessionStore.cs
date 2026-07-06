@@ -24,7 +24,7 @@ public sealed class SessionStore
         string folder = Path.Combine(_root, summary.SessionId);
         Directory.CreateDirectory(folder);
 
-        var chronologicalAttempts = attempts.Reverse().ToList();
+        var chronologicalAttempts = attempts.Reverse().Where(a => a.HasClick).ToList();
         await File.WriteAllTextAsync(Path.Combine(folder, "summary.json"), JsonSerializer.Serialize(summary, _json));
         await File.WriteAllTextAsync(Path.Combine(folder, "events.csv"), EventsCsv(events));
         await File.WriteAllTextAsync(Path.Combine(folder, "attempts.csv"), AttemptsCsv(chronologicalAttempts));
@@ -60,6 +60,7 @@ public sealed class SessionStore
         if (sessions.Count == 0) return new SessionSummary { SessionId = $"Last {window.TotalDays:0} days" };
 
         int attempts = sessions.Sum(s => s.Attempts);
+        int rawAttempts = sessions.Sum(s => s.RawAttempts > 0 ? s.RawAttempts : s.Attempts);
         int tracedAttempts = sessions.Sum(s => s.AttemptsWithMouseTrace);
         return new SessionSummary
         {
@@ -68,18 +69,29 @@ public sealed class SessionStore
             EndedAt = sessions.Max(s => s.EndedAt),
             TotalEvents = sessions.Sum(s => s.TotalEvents),
             Attempts = attempts,
+            RawAttempts = rawAttempts,
+            FilteredAttempts = sessions.Sum(s => s.FilteredAttempts),
+            JiggleAttempts = sessions.Sum(s => s.JiggleAttempts),
+            NoClickAttempts = sessions.Sum(s => s.NoClickAttempts),
             Perfect = sessions.Sum(s => s.Perfect),
             Overlap = sessions.Sum(s => s.Overlap),
             Late = sessions.Sum(s => s.Late),
             EarlyClick = sessions.Sum(s => s.EarlyClick),
             MissedClick = sessions.Sum(s => s.MissedClick),
+            MovingAtClick = sessions.Sum(s => s.MovingAtClick),
             AverageCounterDelayMs = WeightedAverage(sessions, s => s.AverageCounterDelayMs, s => s.Attempts),
             StdDevCounterDelayMs = WeightedAverage(sessions, s => s.StdDevCounterDelayMs, s => s.Attempts),
             AverageClickFromCounterMs = WeightedAverage(sessions, s => s.AverageClickFromCounterMs, s => s.Attempts),
             AttemptsWithMouseTrace = tracedAttempts,
             AverageMousePathDegrees = WeightedAverage(sessions, s => s.AverageMousePathDegrees, s => s.AttemptsWithMouseTrace),
             AverageMouseDisplacementDegrees = WeightedAverage(sessions, s => s.AverageMouseDisplacementDegrees, s => s.AttemptsWithMouseTrace),
-            AverageMousePathEfficiency = WeightedAverage(sessions, s => s.AverageMousePathEfficiency, s => s.AttemptsWithMouseTrace)
+            AverageMousePathEfficiency = WeightedAverage(sessions, s => s.AverageMousePathEfficiency, s => s.AttemptsWithMouseTrace),
+            AverageQualityScore = WeightedAverage(sessions, s => s.AverageQualityScore, s => s.Attempts),
+            AverageTimingScore = WeightedAverage(sessions, s => s.AverageTimingScore, s => s.Attempts),
+            AverageShotScore = WeightedAverage(sessions, s => s.AverageShotScore, s => s.Attempts),
+            AverageMouseScore = WeightedAverage(sessions, s => s.AverageMouseScore, s => s.Attempts),
+            AverageConsistencyScore = WeightedAverage(sessions, s => s.AverageConsistencyScore, s => s.Attempts),
+            BestCleanStreak = sessions.Max(s => s.BestCleanStreak)
         };
     }
 
@@ -110,19 +122,38 @@ public sealed class SessionStore
     private static string AttemptsCsv(IReadOnlyList<StrafeAttempt> attempts)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("index,direction,release_ms,opposite_down_ms,counter_delay_ms,click_ms,click_from_release_ms,click_from_counter_ms,grade,trace_points,raw_end_x,raw_end_y,horizontal_degrees,vertical_degrees,path_degrees,displacement_degrees,path_efficiency");
+        sb.AppendLine("index,direction,manual_excluded,is_jiggle,auto_tagged_jiggle,has_click,filter_label,release_ms,opposite_down_ms,counter_key_up_ms,counter_delay_ms,click_ms,click_up_ms,click_from_release_ms,click_from_counter_ms,grade,mistakes,result,diagnosis,moving_at_click,held_keys_at_click,aim_control,quality_total,quality_timing,quality_shot,quality_mouse,quality_consistency,trace_points,raw_end_x,raw_end_y,horizontal_degrees,vertical_degrees,path_degrees,displacement_degrees,path_efficiency");
         foreach (var a in attempts)
         {
+            var q = CoachingAnalyzer.ScoreAttempt(a, new AnalysisSettings());
             sb.AppendLine(string.Join(',',
                 a.Index.ToString(CultureInfo.InvariantCulture),
                 Csv(a.Direction),
+                a.IsExcluded ? "1" : "0",
+                a.IsJiggle ? "1" : "0",
+                a.IsAutoTaggedJiggle ? "1" : "0",
+                a.HasClick ? "1" : "0",
+                Csv(a.FilterLabel),
                 a.ReleaseTimeMs.ToString("0.###", CultureInfo.InvariantCulture),
                 a.OppositeDownTimeMs.ToString("0.###", CultureInfo.InvariantCulture),
+                Nullable(a.CounterKeyUpTimeMs),
                 a.CounterDelayMs.ToString("0.###", CultureInfo.InvariantCulture),
                 Nullable(a.ClickTimeMs),
+                Nullable(a.ClickUpTimeMs),
                 Nullable(a.ClickFromReleaseMs),
                 Nullable(a.ClickFromCounterMs),
                 Csv(a.Grade.ToString()),
+                Csv(a.MistakeLabel),
+                Csv(a.ResultLabel),
+                Csv(a.Diagnosis),
+                a.IsMovingAtClick ? "1" : "0",
+                Csv(a.HeldKeysAtClick),
+                Csv(a.AimControlLabel),
+                q.Total.ToString(CultureInfo.InvariantCulture),
+                q.Timing.ToString(CultureInfo.InvariantCulture),
+                q.Shot.ToString(CultureInfo.InvariantCulture),
+                q.Mouse.ToString(CultureInfo.InvariantCulture),
+                q.Consistency.ToString(CultureInfo.InvariantCulture),
                 a.TracePoints.ToString(CultureInfo.InvariantCulture),
                 a.RawEndX.ToString(CultureInfo.InvariantCulture),
                 a.RawEndY.ToString(CultureInfo.InvariantCulture),
