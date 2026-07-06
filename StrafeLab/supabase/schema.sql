@@ -12,6 +12,7 @@ create table if not exists public.profiles (
     privacy_choice_made boolean not null default false,
     is_anonymous boolean not null default false,
     share_development_stats boolean not null default false,
+    app_role text not null default 'user' check (app_role in ('user', 'moderator', 'admin')),
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     constraint profiles_username_format check (username ~ '^[a-z0-9_.]{3,32}$')
@@ -46,6 +47,7 @@ create unique index if not exists clan_invites_pending_unique
     on public.clan_invites(clan_id, invited_user_id)
     where status = 'pending';
 
+-- Legacy manual admin list. Preferred going forward: set public.profiles.app_role to 'admin' or 'moderator' in Supabase.
 create table if not exists public.admin_users (
     user_id uuid primary key references public.profiles(id) on delete cascade,
     created_at timestamptz not null default now()
@@ -81,6 +83,20 @@ alter table public.profiles add column if not exists profile_public boolean not 
 alter table public.profiles add column if not exists privacy_choice_made boolean not null default false;
 alter table public.profiles add column if not exists is_anonymous boolean not null default false;
 alter table public.profiles add column if not exists share_development_stats boolean not null default false;
+alter table public.profiles add column if not exists app_role text not null default 'user';
+
+do $$
+begin
+    if not exists (
+        select 1
+          from pg_constraint
+         where conname = 'profiles_app_role_check'
+           and conrelid = 'public.profiles'::regclass
+    ) then
+        alter table public.profiles
+            add constraint profiles_app_role_check check (app_role in ('user', 'moderator', 'admin'));
+    end if;
+end $$;
 
 alter table public.profiles enable row level security;
 alter table public.clans enable row level security;
@@ -160,17 +176,10 @@ security definer
 stable
 set search_path = public
 as $$
-    select exists (
-        select 1
-          from public.profiles p
-         where p.id = p_user_id
-           and p.id = (
-               select first_profile.id
-                 from public.profiles first_profile
-                order by first_profile.created_at asc, first_profile.id asc
-                limit 1
-           )
-    );
+    -- Backend-managed access. Preferred: set public.profiles.app_role = 'admin' in Supabase.
+    -- Existing public.admin_users rows are still honored for backwards compatibility.
+    select exists (select 1 from public.profiles p where p.id = p_user_id and p.app_role = 'admin')
+        or exists (select 1 from public.admin_users a where a.user_id = p_user_id);
 $$;
 
 create or replace function public.is_mod(p_user_id uuid)
@@ -180,7 +189,10 @@ security definer
 stable
 set search_path = public
 as $$
-    select exists (select 1 from public.mods m where m.user_id = p_user_id);
+    -- Backend-managed access. Preferred: set public.profiles.app_role = 'moderator' in Supabase.
+    -- Existing public.mods rows are still honored for backwards compatibility.
+    select exists (select 1 from public.profiles p where p.id = p_user_id and p.app_role = 'moderator')
+        or exists (select 1 from public.mods m where m.user_id = p_user_id);
 $$;
 
 create or replace function public.can_view_admin(p_user_id uuid)
@@ -218,12 +230,21 @@ as $$
     select public.is_admin(auth.uid())::boolean as is_admin,
            public.is_mod(auth.uid())::boolean as is_mod,
            public.can_view_admin(auth.uid())::boolean as can_view_admin,
-           (select count(*)::integer from public.mods) as mod_count;
+           (select count(distinct user_id)::integer
+              from (
+                    select m.user_id from public.mods m
+                    union
+                    select p.id as user_id from public.profiles p where p.app_role = 'moderator'
+                   ) role_sources
+           ) as mod_count;
 $$;
 
 -- Grants used by PostgREST/RPC calls from the desktop client.
 grant usage on schema public to authenticated;
-grant select, insert, update on public.profiles to authenticated;
+revoke update on public.profiles from authenticated;
+grant select, insert on public.profiles to authenticated;
+grant update (username, display_name, profile_public, privacy_choice_made, is_anonymous, share_development_stats, updated_at) on public.profiles to authenticated;
+-- Do not grant authenticated clients update access to profiles.app_role. Change app_role in Supabase with owner/service-role privileges.
 grant select, insert, update on public.clans to authenticated;
 grant select, insert, update on public.clan_members to authenticated;
 grant select, insert, update on public.clan_invites to authenticated;
@@ -238,7 +259,7 @@ create policy profiles_select_authenticated on public.profiles for select to aut
     or public.shares_clan(id, auth.uid())
     or public.is_admin(auth.uid())
 );
-create policy profiles_insert_self on public.profiles for insert to authenticated with check (id = auth.uid());
+create policy profiles_insert_self on public.profiles for insert to authenticated with check (id = auth.uid() and app_role = 'user');
 create policy profiles_update_self on public.profiles for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
 
 create policy clans_select_members on public.clans for select to authenticated using (
@@ -302,6 +323,10 @@ as $$
 declare
     v_uid uuid := auth.uid();
     v_invited uuid;
+    v_username text;
+    v_compact text;
+    v_match_count integer;
+    v_suggestions text;
 begin
     if v_uid is null then
         raise exception 'not authenticated';
@@ -310,9 +335,58 @@ begin
         raise exception 'only the clan owner can invite players';
     end if;
 
-    select p.id into v_invited from public.profiles p where p.username = lower(trim(leading '@' from p_username));
+    -- Robust invite lookup:
+    -- 1. Accept usernames copied with @, whitespace, or invisible clipboard characters.
+    -- 2. Prefer exact username/display_name match.
+    -- 3. Fallback to punctuation-insensitive match so "miladinc7e53b" can find "miladin.c7e53b".
+    v_username := lower(trim(both from coalesce(p_username, '')));
+    v_username := regexp_replace(v_username, '^@+', '');
+    v_username := regexp_replace(v_username, '[[:space:]]+', '', 'g');
+    v_compact := regexp_replace(v_username, '[^a-z0-9]', '', 'g');
+
+    if length(v_username) < 3 then
+        raise exception 'username is too short';
+    end if;
+
+    select p.id into v_invited
+      from public.profiles p
+     where lower(p.username) = v_username
+        or lower(coalesce(p.display_name, '')) = v_username
+     order by p.created_at asc
+     limit 1;
+
+    if v_invited is null and length(v_compact) >= 3 then
+        select count(*), min(p.id) into v_match_count, v_invited
+          from public.profiles p
+         where regexp_replace(lower(p.username), '[^a-z0-9]', '', 'g') = v_compact
+            or regexp_replace(lower(coalesce(p.display_name, '')), '[^a-z0-9]', '', 'g') = v_compact;
+
+        if coalesce(v_match_count, 0) > 1 then
+            select string_agg('@' || p.username, ', ' order by p.username)
+              into v_suggestions
+              from public.profiles p
+             where regexp_replace(lower(p.username), '[^a-z0-9]', '', 'g') = v_compact
+                or regexp_replace(lower(coalesce(p.display_name, '')), '[^a-z0-9]', '', 'g') = v_compact;
+            raise exception 'multiple username matches: %', coalesce(v_suggestions, v_username);
+        end if;
+    end if;
+
     if v_invited is null then
-        raise exception 'username not found';
+        select string_agg('@' || p.username, ', ' order by p.username)
+          into v_suggestions
+          from (
+              select p.username
+                from public.profiles p
+               where lower(p.username) like '%' || left(v_username, greatest(3, least(8, length(v_username)))) || '%'
+                  or lower(coalesce(p.display_name, '')) like '%' || left(v_username, greatest(3, least(8, length(v_username)))) || '%'
+               order by p.username
+               limit 5
+          ) p;
+        raise exception 'username not found: %.%', v_username, case when v_suggestions is null then '' else ' Did you mean ' || v_suggestions || '?' end;
+    end if;
+
+    if v_invited = v_uid then
+        raise exception 'you cannot invite yourself';
     end if;
     if exists (select 1 from public.clan_members cm where cm.clan_id = p_clan_id and cm.user_id = v_invited) then
         raise exception 'player is already in this clan';
@@ -368,6 +442,7 @@ drop function if exists public.my_pending_invites();
 drop function if exists public.clan_dashboard(uuid);
 drop function if exists public.my_profile_stats();
 drop function if exists public.public_profile_stats(text);
+drop function if exists public.public_profile_rankings(text);
 drop function if exists public.admin_global_stats();
 drop function if exists public.admin_player_stats();
 drop function if exists public.moderator_count();
@@ -607,6 +682,76 @@ end;
 $$;
 
 
+create function public.public_profile_rankings(p_query text default '')
+returns table(
+    user_id uuid,
+    username text,
+    display_name text,
+    profile_public boolean,
+    privacy_choice_made boolean,
+    is_anonymous boolean,
+    share_development_stats boolean,
+    sessions integer,
+    attempts integer,
+    clean integer,
+    moving integer,
+    overlap integer,
+    slow integer,
+    clean_rate double precision,
+    moving_rate double precision,
+    avg_counter_delay_ms double precision,
+    avg_click_delay_ms double precision,
+    last_session_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_query text := lower(trim(leading '@' from coalesce(p_query, '')));
+begin
+    if auth.uid() is null then
+        raise exception 'not authenticated';
+    end if;
+
+    return query
+    select p.id::uuid as user_id,
+           p.username::text as username,
+           p.display_name::text as display_name,
+           p.profile_public::boolean as profile_public,
+           p.privacy_choice_made::boolean as privacy_choice_made,
+           p.is_anonymous::boolean as is_anonymous,
+           p.share_development_stats::boolean as share_development_stats,
+           count(s.id)::integer as sessions,
+           coalesce(sum(s.attempts), 0)::integer as attempts,
+           coalesce(sum(s.clean), 0)::integer as clean,
+           coalesce(sum(s.moving), 0)::integer as moving,
+           coalesce(sum(s.overlap), 0)::integer as overlap,
+           coalesce(sum(s.slow), 0)::integer as slow,
+           case when coalesce(sum(s.attempts), 0) = 0 then 0::double precision
+                else (coalesce(sum(s.clean), 0)::double precision * 100.0 / nullif(coalesce(sum(s.attempts), 0), 0)::double precision)::double precision end as clean_rate,
+           case when coalesce(sum(s.attempts), 0) = 0 then 0::double precision
+                else (coalesce(sum(s.moving), 0)::double precision * 100.0 / nullif(coalesce(sum(s.attempts), 0), 0)::double precision)::double precision end as moving_rate,
+           coalesce(avg(s.avg_counter_delay_ms), 0)::double precision as avg_counter_delay_ms,
+           coalesce(avg(s.avg_click_delay_ms), 0)::double precision as avg_click_delay_ms,
+           max(s.ended_at)::timestamptz as last_session_at
+      from public.profiles p
+      left join public.stat_sessions s on s.user_id = p.id
+     where p.profile_public = true
+       and (v_query = '' or p.username ilike '%' || v_query || '%' or p.display_name ilike '%' || v_query || '%')
+     group by p.id, p.username, p.display_name, p.profile_public, p.privacy_choice_made, p.is_anonymous, p.share_development_stats
+     order by case when coalesce(sum(s.attempts), 0) >= 20 then 0 else 1 end,
+              case when coalesce(sum(s.attempts), 0) = 0 then 0::double precision
+                   else (coalesce(sum(s.clean), 0)::double precision * 100.0 / nullif(coalesce(sum(s.attempts), 0), 0)::double precision)::double precision end desc,
+              coalesce(sum(s.attempts), 0) desc,
+              case when coalesce(sum(s.attempts), 0) = 0 then 100::double precision
+                   else (coalesce(sum(s.moving), 0)::double precision * 100.0 / nullif(coalesce(sum(s.attempts), 0), 0)::double precision)::double precision end asc,
+              p.username asc
+     limit 100;
+end;
+$$;
+
+
 create function public.admin_global_stats()
 returns table(
     players integer,
@@ -710,7 +855,14 @@ begin
     if auth.uid() is null or not public.is_admin(auth.uid()) then
         raise exception 'admin access required';
     end if;
-    return (select count(*)::integer from public.mods);
+    return (
+        select count(distinct user_id)::integer
+          from (
+                select m.user_id from public.mods m
+                union
+                select p.id as user_id from public.profiles p where p.app_role = 'moderator'
+               ) role_sources
+    );
 end;
 $$;
 
@@ -734,10 +886,12 @@ begin
     select p.id::uuid as user_id,
            p.username::text as username,
            coalesce(u.email, '')::text as email,
-           m.created_at::timestamptz as created_at
-      from public.mods m
-      join public.profiles p on p.id = m.user_id
+           coalesce(m.created_at, p.updated_at, p.created_at)::timestamptz as created_at
+      from public.profiles p
+      left join public.mods m on m.user_id = p.id
       left join auth.users u on u.id = p.id
+     where not public.is_admin(p.id)
+       and (p.app_role = 'moderator' or m.user_id is not null)
      order by p.username;
 end;
 $$;
@@ -768,7 +922,7 @@ begin
            coalesce(u.email, '')::text as email
       from public.profiles p
       left join auth.users u on u.id = p.id
-     where not public.is_admin(p.id)
+     where not public.can_view_admin(p.id)
        and p.id <> auth.uid()
        and (p.username ilike '%' || v_query || '%' or coalesce(u.email, '') ilike '%' || v_query || '%')
      order by p.username
@@ -793,6 +947,12 @@ begin
         raise exception 'the admin does not need to be added as a mod';
     end if;
 
+    update public.profiles
+       set app_role = 'moderator',
+           updated_at = now()
+     where id = p_user_id
+       and app_role <> 'admin';
+
     insert into public.mods(user_id, created_by)
     values (p_user_id, auth.uid())
     on conflict (user_id) do nothing;
@@ -810,6 +970,11 @@ begin
         raise exception 'admin access required';
     end if;
     delete from public.mods m where m.user_id = p_user_id;
+    update public.profiles
+       set app_role = 'user',
+           updated_at = now()
+     where id = p_user_id
+       and app_role = 'moderator';
 end;
 $$;
 
@@ -829,6 +994,7 @@ grant execute on function public.my_pending_invites() to authenticated;
 grant execute on function public.clan_dashboard(uuid) to authenticated;
 grant execute on function public.my_profile_stats() to authenticated;
 grant execute on function public.public_profile_stats(text) to authenticated;
+grant execute on function public.public_profile_rankings(text) to authenticated;
 grant execute on function public.admin_global_stats() to authenticated;
 grant execute on function public.admin_player_stats() to authenticated;
 
@@ -837,3 +1003,12 @@ grant execute on function public.list_moderators() to authenticated;
 grant execute on function public.search_moderator_candidates(text) to authenticated;
 grant execute on function public.add_moderator(uuid) to authenticated;
 grant execute on function public.remove_moderator(uuid) to authenticated;
+
+
+-- Manual admin setup example:
+-- 1) Create/sign in to a StrafeLab account so public.profiles contains your row.
+-- 2) Find the row:
+--      select id, username, created_at from public.profiles order by created_at asc;
+-- 3) Promote the account manually:
+--      insert into public.admin_users(user_id) values ('YOUR_PROFILE_UUID') on conflict do nothing;
+-- 4) Sign out/in or refresh admin access in the app.

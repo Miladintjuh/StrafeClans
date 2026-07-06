@@ -88,6 +88,7 @@ public sealed class SupabaseLocalSession
     public bool IsModerator { get; set; }
     public bool CanViewAdmin { get; set; }
     public int ModCount { get; set; }
+    public bool NeedsDemo { get; set; }
 
     public bool HasToken => !string.IsNullOrWhiteSpace(AccessToken);
     public bool CanRefresh => !string.IsNullOrWhiteSpace(RefreshToken);

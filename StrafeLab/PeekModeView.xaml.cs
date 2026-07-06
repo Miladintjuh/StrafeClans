@@ -23,6 +23,8 @@ public partial class PeekModeView : UserControl
     private bool _uiReady;
     private PeekAttempt? _selectedAttempt;
     private bool _manualRepMode = false;
+    private bool _singleRepCaptureActive;
+    private bool _continuousSessionEverStarted;
     private AppPreferences _preferences;
     public event Action? RequestLiveTrainerView;
     public event Action? StateChanged;
@@ -63,7 +65,14 @@ public partial class PeekModeView : UserControl
 
     public void ReceiveRawInput(InputEventRecord raw)
     {
-        if (!_active) return;
+        if (!_active && !_singleRepCaptureActive)
+        {
+            if (raw.Kind == InputKind.KeyDown && (raw.Code == "W" || raw.Code == "S") && SingleRepOverlay?.Visibility == Visibility.Visible)
+            {
+                ArmSingleAttemptFromHotkey();
+            }
+            return;
+        }
 
         _sessionStartRawMs ??= raw.SessionTimeMs;
         var e = new InputEventRecord
@@ -83,18 +92,28 @@ public partial class PeekModeView : UserControl
 
     public void ArmSingleAttemptFromHotkey()
     {
-        if (!_active)
-        {
-            StartPeekMode(manualMode: true);
-        }
-
         ManualRepCheckBox.IsChecked = true;
         ApplySettingsFromUi();
+
+        if (!_active)
+        {
+            _analyzer.Reset();
+            _visibleAttempts.Clear();
+            _selectedAttempt = null;
+            PeekGrid.SelectedItem = null;
+            _sessionStartRawMs = null;
+            _singleRepCaptureActive = true;
+            _wallClock.Restart();
+            SingleRepOverlay.Visibility = Visibility.Collapsed;
+        }
+
         _analyzer.ArmSingleAttempt();
-        ArmStateText.Text = "recording next peek";
-        StatusText.Text = "Armed";
-        CoachingText.Text = "F8 armed one rep. Now do exactly one full peek: step out, counter-strafe, shoot, then move back to reset.";
+        ArmStateText.Text = "recording one rep";
+        StatusText.Text = "Armed rep";
+        SelectedSummaryText.Text = "Do one full peek: step out, counter-strafe, shoot, then reset. The result opens here without saving a session.";
+        CoachingText.Text = "One rep is armed. Press W or S after a result to arm the next rep and clear the previous one.";
         SystemSounds.Asterisk.Play();
+        StateChanged?.Invoke();
         RefreshUi();
     }
 
@@ -148,6 +167,9 @@ public partial class PeekModeView : UserControl
         _selectedAttempt = null;
         _sessionStartRawMs = null;
         _active = true;
+        _continuousSessionEverStarted = true;
+        _singleRepCaptureActive = false;
+        SingleRepOverlay.Visibility = Visibility.Collapsed;
         _wallClock.Restart();
         StatusText.Text = "Live";
         ArmStateText.Text = _manualRepMode ? "Press F8 / Arm rep" : "Auto-detecting";
@@ -163,6 +185,8 @@ public partial class PeekModeView : UserControl
         if (!_active) return;
         ApplySettingsFromUi();
         _active = false;
+        _continuousSessionEverStarted = false;
+        _singleRepCaptureActive = false;
         _wallClock.Stop();
         _analyzer.FlushCurrentAttempt();
         StatusText.Text = "Stopped";
@@ -178,6 +202,9 @@ public partial class PeekModeView : UserControl
         _sessionStartRawMs = null;
         _wallClock.Reset();
         _active = false;
+        _continuousSessionEverStarted = false;
+        _singleRepCaptureActive = false;
+        SingleRepOverlay.Visibility = Visibility.Collapsed;
         StatusText.Text = "Idle";
         ElapsedText.Text = "not recording";
         ArmStateText.Text = "not armed";
@@ -196,6 +223,14 @@ public partial class PeekModeView : UserControl
                 _visibleAttempts.Insert(0, attempt);
             }
 
+            if (_singleRepCaptureActive && attempt.HasClick && attempt.HasCounter)
+            {
+                _singleRepCaptureActive = false;
+                _selectedAttempt = attempt;
+                PeekGrid.SelectedItem = attempt;
+                ShowSingleRepResult(attempt);
+            }
+
             PeekGrid.Items.Refresh();
             ApplyFiltersToGrid();
             DrawTimingChart();
@@ -203,6 +238,31 @@ public partial class PeekModeView : UserControl
             StateChanged?.Invoke();
             RefreshUi();
         });
+    }
+
+    private void ShowSingleRepResult(PeekAttempt attempt)
+    {
+        attempt.Recalculate();
+        string timing = attempt.TimingClass switch
+        {
+            PeekTimingClass.Clean => "Clean counter timing",
+            PeekTimingClass.Overlap => "Overlap in the handoff",
+            PeekTimingClass.LateGap => "Late counter gap",
+            _ => "Timing pending"
+        };
+        string shot = attempt.ShotPatternLabel;
+        SingleRepTitleText.Text = $"Rep #{attempt.Index}: {timing}";
+        SingleRepSummaryText.Text = $"{attempt.StepLabel} · {attempt.CounterDelayLabel} counter · {shot} · {attempt.MouseActionLabel} mouse";
+        SingleRepAdviceText.Text = attempt.Advice;
+        SingleRepOverlay.Visibility = Visibility.Visible;
+        StatusText.Text = "Rep complete";
+        ArmStateText.Text = "W/S or F8 re-arms";
+        CoachingText.Text = "Review the single-rep result. Press W or S to arm the next rep and replace this data.";
+    }
+
+    private void SingleRepCloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        SingleRepOverlay.Visibility = Visibility.Collapsed;
     }
 
     private void Filter_Changed(object sender, RoutedEventArgs e)
@@ -270,6 +330,9 @@ public partial class PeekModeView : UserControl
         _analyzer.CleanMaxMs = ParseBox(CleanMaxBox.Text, 45);
         _analyzer.OverlapToleranceMs = ParseBox(OverlapToleranceBox.Text, 8);
         _analyzer.SprayHoldMs = ParseBox(SprayHoldBox.Text, 180);
+        _analyzer.MaxMouseTraceMs = _preferences.PeekMouseTraceMaxMs;
+        _analyzer.MaxMouseTracePoints = _preferences.PeekMouseTraceMaxPoints;
+        _analyzer.ResetMouseAfterClickMs = _preferences.PeekResetMouseAfterClickMs;
         _manualRepMode = ManualRepCheckBox?.IsChecked != false;
         _analyzer.ManualSingleAttemptMode = _manualRepMode;
     }
@@ -279,7 +342,13 @@ public partial class PeekModeView : UserControl
         if (!_uiReady) return;
         ApplySettingsFromUi();
 
-        if (_active)
+        if (_singleRepCaptureActive)
+        {
+            StatusText.Text = _analyzer.IsArmed ? "Armed rep" : "Capturing rep";
+            ElapsedText.Text = "single attempt";
+            ArmStateText.Text = _analyzer.IsArmed ? "waiting for step-out" : "recording one rep";
+        }
+        else if (_active)
         {
             StatusText.Text = _analyzer.IsArmed ? "Armed" : "Live";
             ElapsedText.Text = _wallClock.Elapsed.ToString(@"mm\:ss\.f", CultureInfo.InvariantCulture);
@@ -300,6 +369,7 @@ public partial class PeekModeView : UserControl
 
         var attempts = _analyzer.Attempts.ToList();
         ClearButton.IsEnabled = attempts.Count > 0;
+        LiveViewButton.IsEnabled = _continuousSessionEverStarted;
         ConclusionsButton.IsEnabled = attempts.Count > 0;
         AttemptCountText.Text = attempts.Count.ToString(CultureInfo.InvariantCulture);
         int sprays = attempts.Count(a => a.IsSpray);
@@ -904,6 +974,9 @@ public sealed class PeekAnalyzer
     public double OverlapToleranceMs { get; set; } = 8;
     public double SprayHoldMs { get; set; } = 180;
     public bool ManualSingleAttemptMode { get; set; } = true;
+    public double MaxMouseTraceMs { get; set; } = 900;
+    public int MaxMouseTracePoints { get; set; } = 180;
+    public double ResetMouseAfterClickMs { get; set; } = 250;
     public bool IsArmed { get; private set; }
 
     public int RemoveAttempts(IEnumerable<PeekAttempt> attempts)
@@ -1097,6 +1170,9 @@ public sealed class PeekAnalyzer
         // stepping out and waiting for the crosshair to catch the bot. Track from the
         // initial step-out key, not only after the counter key.
         if (e.SessionTimeMs < _current.StepDownTimeMs) return;
+        if (e.SessionTimeMs - _current.StepDownTimeMs > Math.Max(60, MaxMouseTraceMs)) return;
+        if (_current.HasClick && e.SessionTimeMs - _current.FirstClickTimeMs > Math.Max(20, ResetMouseAfterClickMs)) return;
+        if (_current.MouseTrace.Count >= Math.Max(8, MaxMouseTracePoints)) return;
 
         int x = e.DeltaX;
         int y = e.DeltaY;

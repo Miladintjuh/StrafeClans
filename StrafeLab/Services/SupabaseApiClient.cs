@@ -10,8 +10,8 @@ namespace StrafeLab.Services;
 
 public sealed class SupabaseApiClient
 {
-    private const string SupabaseUrl = "https://vazqnkgqvxjngyuxcqio.supabase.co";
-    private const string PublishableKey = "sb_publishable_32Dw1_xsWdqT3tPyg_2y9Q_NBQc2zqP";
+    private const string SupabaseUrl = "https://bacxpanhdtlwjfgaqufo.supabase.co";
+    private const string PublishableKey = "sb_publishable_u9Bl6EVZXYtmzqfS9e6ILg_4otgK_k2";
 
     private readonly HttpClient _http = new();
     private readonly JsonSerializerOptions _json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true };
@@ -22,9 +22,9 @@ public sealed class SupabaseApiClient
     public string DisplayName => string.IsNullOrWhiteSpace(Session?.Username)
         ? (string.IsNullOrWhiteSpace(Session?.Email) ? "Not signed in" : Session!.Email)
         : $"@{Session!.Username}";
-    public bool IsAdmin => Session?.IsAdmin == true;
-    public bool IsModerator => Session?.IsModerator == true;
-    public bool CanViewAdmin => Session?.CanViewAdmin == true || IsAdmin || IsModerator;
+    public bool IsAdmin => IsSignedIn && Session?.IsAdmin == true;
+    public bool IsModerator => IsSignedIn && Session?.IsModerator == true;
+    public bool CanViewAdmin => IsSignedIn && (Session?.CanViewAdmin == true || IsAdmin || IsModerator);
 
     public SupabaseApiClient()
     {
@@ -34,22 +34,32 @@ public sealed class SupabaseApiClient
         LoadLocalSession();
     }
 
-    public async Task<string> SignInAsync(string email, string password)
+    private static string AccountEmailFromUsername(string username)
     {
-        var payload = new { email = email.Trim(), password };
+        string normalized = NormalizeUsername(username);
+        return $"{normalized}@users.strafelab.app";
+    }
+
+    public async Task<string> SignInAsync(string usernameOrEmail, string password)
+    {
+        string input = usernameOrEmail.Trim();
+        bool looksLikeEmail = input.Contains('@');
+        string username = looksLikeEmail ? string.Empty : NormalizeUsername(input);
+        var payload = new { email = looksLikeEmail ? input : AccountEmailFromUsername(username), password };
         using var doc = await SendJsonAsync(HttpMethod.Post, AuthUrl("/token?grant_type=password"), payload, requireAuth: false);
         SaveSessionFromAuthResponse(doc.RootElement);
+        if (Session != null && !looksLikeEmail) Session.Username = username;
         await LoadProfileAsync();
         SaveLocalSession();
         return $"Signed in as {DisplayName}.";
     }
 
-    public async Task<string> SignUpAsync(string email, string password, string username)
+    public async Task<string> SignUpAsync(string username, string password, string ignoredEmail = "")
     {
         username = NormalizeUsername(username);
         var payload = new
         {
-            email = email.Trim(),
+            email = AccountEmailFromUsername(username),
             password,
             data = new { username, display_name = username }
         };
@@ -58,12 +68,55 @@ public sealed class SupabaseApiClient
         if (doc.RootElement.TryGetProperty("access_token", out var tokenEl) && tokenEl.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(tokenEl.GetString()))
         {
             SaveSessionFromAuthResponse(doc.RootElement);
+            if (Session != null)
+            {
+                Session.Username = username;
+                Session.NeedsDemo = true;
+            }
             await UpsertProfileAsync(username);
             SaveLocalSession();
             return $"Account created and signed in as @{username}.";
         }
 
-        return "Account created. Check email verification if Supabase requires it, then sign in.";
+        // Some Supabase projects return no session if email confirmation is enabled. Since StrafeLab uses username-only accounts,
+        // immediately try password sign-in so the user does not need an email verification loop.
+        using var signInDoc = await SendJsonAsync(HttpMethod.Post, AuthUrl("/token?grant_type=password"), new { email = AccountEmailFromUsername(username), password }, requireAuth: false);
+        SaveSessionFromAuthResponse(signInDoc.RootElement);
+        if (Session != null)
+        {
+            Session.Username = username;
+            Session.NeedsDemo = true;
+        }
+        await UpsertProfileAsync(username);
+        SaveLocalSession();
+        return $"Account created and signed in as @{username}.";
+    }
+
+    public async Task SetRecoveryEmailAsync(string email)
+    {
+        await EnsureAuthenticatedAsync();
+        email = email.Trim();
+        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@')) throw new InvalidOperationException("Enter a valid email address.");
+        using var _ = await SendJsonAsync(new HttpMethod("PUT"), AuthUrl("/user"), new { email }, requireAuth: true);
+        if (Session != null)
+        {
+            Session.Email = email;
+            SaveLocalSession();
+        }
+    }
+
+    public void MarkDemoSeen()
+    {
+        if (Session == null) return;
+        Session.NeedsDemo = false;
+        SaveLocalSession();
+    }
+
+    public void MarkDemoNeeded()
+    {
+        if (Session == null) return;
+        Session.NeedsDemo = true;
+        SaveLocalSession();
     }
 
     public async Task<string> SignInAnonymouslyAsync(string displayName)
@@ -233,6 +286,19 @@ public sealed class SupabaseApiClient
         return ParseProfileStats(doc.RootElement);
     }
 
+    public async Task<IReadOnlyList<CloudProfileStats>> GetPublicLeaderboardAsync(string query = "")
+    {
+        await EnsureAuthenticatedAsync();
+        using var doc = await RpcAsync("public_profile_rankings", new { p_query = (query ?? string.Empty).Trim().TrimStart('@') });
+        var rows = new List<CloudProfileStats>();
+        if (doc.RootElement.ValueKind != JsonValueKind.Array) return rows;
+        foreach (var row in doc.RootElement.EnumerateArray())
+        {
+            rows.Add(ParseProfileStats(row));
+        }
+        return rows;
+    }
+
     public async Task SetProfileVisibilityAsync(bool isPublic)
     {
         await EnsureProfileAsync();
@@ -258,7 +324,7 @@ public sealed class SupabaseApiClient
     public async Task InviteToClanAsync(string clanId, string username)
     {
         await EnsureAuthenticatedAsync();
-        using var _ = await RpcAsync("invite_to_clan", new { p_clan_id = clanId, p_username = NormalizeUsername(username) });
+        using var _ = await RpcAsync("invite_to_clan", new { p_clan_id = clanId, p_username = CleanInviteUsername(username) });
     }
 
     public async Task RespondToInviteAsync(string inviteId, bool accept)
@@ -578,7 +644,8 @@ public sealed class SupabaseApiClient
             IsAdmin = Session?.IsAdmin ?? false,
             IsModerator = Session?.IsModerator ?? false,
             CanViewAdmin = Session?.CanViewAdmin ?? false,
-            ModCount = Session?.ModCount ?? 0
+            ModCount = Session?.ModCount ?? 0,
+            NeedsDemo = Session?.NeedsDemo ?? false
         };
     }
 
@@ -608,6 +675,19 @@ public sealed class SupabaseApiClient
         if (normalized.Length < 3) throw new InvalidOperationException("Username must be at least 3 characters.");
         if (normalized.Any(c => !(char.IsLetterOrDigit(c) || c == '_' || c == '.'))) throw new InvalidOperationException("Username can only use letters, numbers, underscore, and dot.");
         return normalized;
+    }
+
+    private static string CleanInviteUsername(string username)
+    {
+        string cleaned = new string((username ?? string.Empty)
+            .Trim()
+            .TrimStart('@')
+            .Where(c => !char.IsWhiteSpace(c) && c != '​' && c != '‌' && c != '‍' && c != '﻿')
+            .ToArray())
+            .ToLowerInvariant();
+        if (cleaned.Length < 3) throw new InvalidOperationException("Invite username must be at least 3 characters.");
+        if (cleaned.Any(c => !(char.IsLetterOrDigit(c) || c == '_' || c == '.'))) throw new InvalidOperationException("Invite username can only use letters, numbers, underscore, and dot. Copy only the username, not a table row.");
+        return cleaned;
     }
 
     private static string AuthUrl(string path) => SupabaseUrl.TrimEnd('/') + "/auth/v1" + path;

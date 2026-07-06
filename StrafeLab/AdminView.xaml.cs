@@ -9,15 +9,46 @@ namespace StrafeLab;
 public partial class AdminView : UserControl
 {
     private readonly SupabaseApiClient _supabase;
+    private readonly AppPreferences _preferences;
+    private readonly Action<AppPreferences> _preferencesApplied;
 
     public event Action? BackRequested;
 
-    public AdminView(SupabaseApiClient supabase)
+    public AdminView(SupabaseApiClient supabase, AppPreferences preferences, Action<AppPreferences> preferencesApplied)
     {
         _supabase = supabase;
+        _preferences = preferences;
+        _preferencesApplied = preferencesApplied;
         InitializeComponent();
-        Loaded += async (_, _) => await RefreshAsync();
+        Loaded += async (_, _) => { LoadCaptureTuning(); await RefreshAsync(); };
     }
+
+
+    private void LoadCaptureTuning()
+    {
+        AdminCounterPairWindowBox.Text = _preferences.CounterPairWindowMs.ToString(CultureInfo.InvariantCulture);
+        AdminMouseTraceMaxBox.Text = _preferences.MouseTraceMaxMs.ToString(CultureInfo.InvariantCulture);
+        AdminPeekTraceMaxBox.Text = _preferences.PeekMouseTraceMaxMs.ToString(CultureInfo.InvariantCulture);
+        AdminPeekTracePointsBox.Text = _preferences.PeekMouseTraceMaxPoints.ToString(CultureInfo.InvariantCulture);
+        AdminPeekResetAfterClickBox.Text = _preferences.PeekResetMouseAfterClickMs.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private void SaveCaptureTuningButton_Click(object sender, RoutedEventArgs e)
+    {
+        _preferences.CounterPairWindowMs = ParseDouble(AdminCounterPairWindowBox.Text, 400);
+        _preferences.MouseTraceMaxMs = ParseDouble(AdminMouseTraceMaxBox.Text, 750);
+        _preferences.PeekMouseTraceMaxMs = ParseDouble(AdminPeekTraceMaxBox.Text, 900);
+        _preferences.PeekMouseTraceMaxPoints = Math.Clamp(ParseInt(AdminPeekTracePointsBox.Text, 180), 16, 1000);
+        _preferences.PeekResetMouseAfterClickMs = ParseDouble(AdminPeekResetAfterClickBox.Text, 250);
+        _preferencesApplied(_preferences);
+        StatusText.Text = "Capture tuning saved locally. New sessions use the updated values immediately.";
+    }
+
+    private static double ParseDouble(string value, double fallback)
+        => double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double parsed) ? parsed : fallback;
+
+    private static int ParseInt(string value, int fallback)
+        => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed) ? parsed : fallback;
 
     private async void RefreshButton_Click(object sender, RoutedEventArgs e) => await RefreshAsync();
     private void BackButton_Click(object sender, RoutedEventArgs e) => BackRequested?.Invoke();
@@ -29,8 +60,8 @@ public partial class AdminView : UserControl
             await _supabase.RefreshAdminAccessAsync();
             ModsButton.Visibility = _supabase.IsAdmin ? Visibility.Visible : Visibility.Collapsed;
             SubtitleText.Text = _supabase.IsAdmin
-                ? "Aggregated summary stats from players who chose to share non-personal practice data. You can also manage moderators."
-                : "Aggregated summary stats from players who chose to share non-personal practice data. Moderator view.";
+                ? "Admin access confirmed by Supabase profile role. You can manage moderators and view shared stats."
+                : "Moderator access confirmed by Supabase. Shared stats view only.";
 
             StatusText.Text = "Loading shared stats...";
             var global = await _supabase.GetAdminGlobalStatsAsync();
@@ -139,7 +170,7 @@ public partial class AdminView : UserControl
         ModeratorsGrid.ItemsSource = mods;
         ModsHelpText.Text = mods.Count == 0
             ? "No mods have been added yet. Search for a username or e-mail address below, then click Add. Mods can view the shared Admin stats page, but they cannot add or remove other mods."
-            : "Current moderators. Mods can view shared Admin stats, but only the admin can manage this list.";
+            : "Current moderators. Mods can view shared Admin stats. Preferred setup: set app_role='moderator' directly in Supabase.";
         ModsStatusText.Text = mods.Count == 0 ? "Add a mod by searching for a player below." : $"{mods.Count} moderator(s) configured.";
     }
 }

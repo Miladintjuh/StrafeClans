@@ -45,6 +45,31 @@ public partial class ProfileView : UserControl
     private async void MakePublicButton_Click(object sender, RoutedEventArgs e) => await SetVisibilityAsync(true);
     private async void SetPrivateButton_Click(object sender, RoutedEventArgs e) => await SetVisibilityAsync(false);
     private async void SetPublicButton_Click(object sender, RoutedEventArgs e) => await SetVisibilityAsync(true);
+    private async void SaveRecoveryEmailButton_Click(object sender, RoutedEventArgs e) => await SaveRecoveryEmailAsync();
+
+
+    private async Task SaveRecoveryEmailAsync()
+    {
+        if (!_ownProfile) return;
+        try
+        {
+            await _supabase.SetRecoveryEmailAsync(RecoveryEmailBox.Text);
+            SubtitleText.Text = "Recovery email saved. Supabase may send a confirmation email before password resets are active.";
+            AuthChanged?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            SubtitleText.Text = ToCleanProfileError(ex.Message);
+        }
+    }
+
+    private static string ToCleanProfileError(string raw)
+    {
+        string lower = (raw ?? string.Empty).ToLowerInvariant();
+        if (lower.Contains("email")) return "That email could not be saved. Check the address or try again later.";
+        if (lower.Contains("rate limit")) return "Supabase is rate-limiting account changes. Wait a minute and try again.";
+        return string.IsNullOrWhiteSpace(raw) ? "Profile update failed." : raw;
+    }
 
     private async Task SetVisibilityAsync(bool isPublic)
     {
@@ -105,6 +130,9 @@ public partial class ProfileView : UserControl
         SetPrivateButton.Visibility = _ownProfile ? Visibility.Visible : Visibility.Collapsed;
         SetPublicButton.Visibility = _ownProfile ? Visibility.Visible : Visibility.Collapsed;
         SignOutButton.Visibility = _ownProfile ? Visibility.Visible : Visibility.Collapsed;
+        RecoveryEmailBox.Text = _supabase.Session?.Email ?? string.Empty;
+        RecoveryEmailBox.Visibility = _ownProfile ? Visibility.Visible : Visibility.Collapsed;
+        SaveRecoveryEmailButton.Visibility = _ownProfile ? Visibility.Visible : Visibility.Collapsed;
 
         SessionsText.Text = stats.Sessions.ToString(CultureInfo.InvariantCulture);
         AttemptsText.Text = stats.Attempts.ToString(CultureInfo.InvariantCulture);

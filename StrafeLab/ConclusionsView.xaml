@@ -64,7 +64,7 @@
                     </Border>
                 </UniformGrid>
 
-                <TabControl Margin="8">
+                <TabControl x:Name="ConclusionsTabs" Margin="8">
                     <TabItem Header="Timing">
                         <Grid Margin="10">
                             <Grid.RowDefinitions>
@@ -94,6 +94,25 @@
                                 <Canvas x:Name="ResultCanvas" Background="#08101E" SizeChanged="Canvas_SizeChanged" />
                             </Border>
                             <TextBlock x:Name="DirectionInsightText" Grid.Row="1" Grid.ColumnSpan="2" TextWrapping="Wrap" Style="{StaticResource Muted}" Margin="0,12,0,0" />
+                        </Grid>
+                    </TabItem>
+                    <TabItem Header="Mistakes">
+                        <Grid Margin="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="360" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Border Grid.Column="0" Background="#08101E" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14" ClipToBounds="True" Margin="0,0,8,0">
+                                <Canvas x:Name="MistakesCanvas" Background="#08101E" SizeChanged="Canvas_SizeChanged" />
+                            </Border>
+                            <Border Grid.Column="1" Background="#08101E" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14" ClipToBounds="True" Margin="8,0,0,0">
+                                <Canvas x:Name="MetricsCanvas" Background="#08101E" SizeChanged="Canvas_SizeChanged" />
+                            </Border>
+                            <TextBlock x:Name="MistakesInsightText" Grid.Row="1" Grid.ColumnSpan="2" TextWrapping="Wrap" Style="{StaticResource Muted}" Margin="0,12,0,0" />
                         </Grid>
                     </TabItem>
                     <TabItem Header="Mouse / aim">

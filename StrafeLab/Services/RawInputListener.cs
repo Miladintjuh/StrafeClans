@@ -32,6 +32,9 @@ public sealed class RawInputListener : IDisposable
 
     public event Action<InputEventRecord>? InputEdge;
     public bool IsRegistered { get; private set; }
+    public bool EmitMouseMoves { get; set; }
+
+    public void ResetDeviceState() => _keyDownState.Clear();
 
     public RawInputListener(HighResolutionClock clock)
     {
@@ -141,7 +144,7 @@ public sealed class RawInputListener : IDisposable
         // For normal gaming mice this is relative movement in raw counts. Absolute-mode
         // devices are uncommon for FPS practice, but the deltas are still preserved as-is.
         bool hasMovement = mouse.lLastX != 0 || mouse.lLastY != 0;
-        if (hasMovement)
+        if (hasMovement && EmitMouseMoves)
         {
             string code = (mouse.usFlags & MOUSE_MOVE_ABSOLUTE) != 0 ? "MOVE_ABS" : "MOVE";
             Raise(code, InputKind.MouseMove, t, mouse.lLastX, mouse.lLastY);

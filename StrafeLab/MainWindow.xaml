@@ -1,7 +1,7 @@
 <Window x:Class="StrafeLab.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="StrafeLab" Height="940" Width="1500" MinHeight="820" MinWidth="1220">
+        Title="StrafeLab v2.2.31" Icon="Assets/StrafeLab.ico" Height="940" Width="1500" MinHeight="680" MinWidth="900" Background="{StaticResource WindowBgBrush}">
     <Window.Resources>
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
@@ -51,33 +51,46 @@
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="8,6" />
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#2B3B63" />
+                    <Setter Property="Foreground" Value="#FFFFFF" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
     </Window.Resources>
 
-    <Grid Margin="18">
+    <Grid x:Name="RootChrome" Margin="18" Background="{StaticResource WindowBgBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Margin="4,0,4,12">
+        <Grid x:Name="HeaderChrome" Grid.Row="0" Margin="4,0,4,12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock Text="StrafeLab" FontSize="34" FontWeight="Bold" />
-                <TextBlock Text="Local A/D + mouse timing analyzer for counter-strafe practice" Style="{StaticResource Muted}" />
+                <TextBlock Text="StrafeLab v2.2.31" FontSize="34" FontWeight="Bold" />
             </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <Button x:Name="StartButton" Content="Start Session" Click="StartButton_Click" Margin="0,0,8,0" />
-                <Button x:Name="StopButton" Content="Stop + Save" Click="StopButton_Click" Background="#29324A" Margin="0,0,8,0" />
-                <Button Content="Open Data Folder" Click="OpenFolderButton_Click" Background="#29324A" />
-            </StackPanel>
+            <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Button x:Name="StartButton" Content="Start [F9]" Click="StartButton_Click" Margin="0,0,8,0" />
+                <Button x:Name="StopButton" Content="Stop + Save [F9]" Click="StopButton_Click" Background="#29324A" Margin="0,0,8,0" Visibility="Collapsed" />
+                <Button x:Name="ReportsButton" Content="Reports" Click="ReportsButton_Click" Background="#29324A" Margin="0,0,8,0" Visibility="Collapsed" IsEnabled="False" ToolTip="Reports are now exported from Conclusions." />
+                <Button x:Name="AccountButton" Content="Login" Click="AccountButton_Click" Background="#29324A" Margin="0,0,8,0" ToolTip="Sign in or create an account." />
+                <Button x:Name="ClansButton" Content="Rankings" Click="ClansButton_Click" Background="#29324A" Margin="0,0,8,0" IsEnabled="False" ToolTip="Sign in to view rankings and clan stats." />
+                <Button x:Name="AdminButton" Content="Admin" Click="AdminButton_Click" Background="#29324A" Margin="0,0,8,0" Visibility="Collapsed" IsEnabled="False" ToolTip="Admin/moderator access only." />
+                <Button x:Name="ArmHeaderButton" Content="Arm rep [F8]" Click="ArmHeaderButton_Click" Background="#29324A" Margin="0,0,8,0" Visibility="Collapsed" ToolTip="Arm one Peek rep without starting a continuous session." />
+                <Button x:Name="PeekButton" Content="Peek mode [F8]" Click="PeekModeButton_Click" Background="#29324A" Margin="0,0,8,0" />
+                <Button x:Name="ShowLastButton" Content="Show last" Click="ShowLastButton_Click" Background="#29324A" Margin="0,0,8,0" ToolTip="Listen for attempts and review only the latest one." />
+                <Button x:Name="HeaderConclusionsButton" Content="Conclusions" Click="HeaderConclusionsButton_Click" Background="#29324A" Margin="0,0,8,0" IsEnabled="False" ToolTip="Record data before opening conclusions." />
+                <Button x:Name="SettingsButton" Content="⚙" Click="SettingsButton_Click" Background="#29324A" Width="46" Padding="12,10" ToolTip="Settings" />
+            </WrapPanel>
         </Grid>
 
-        <Grid Grid.Row="1">
+        <Grid x:Name="MetricsChrome" Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition />
                 <ColumnDefinition />
@@ -98,15 +111,15 @@
                 <StackPanel>
                     <TextBlock Text="Attempts" Style="{StaticResource MetricLabel}" />
                     <TextBlock x:Name="AttemptsText" Text="0" Style="{StaticResource MetricValue}" />
-                    <TextBlock x:Name="EventsText" Text="0 events" Style="{StaticResource Muted}" />
+                    <TextBlock x:Name="EventsText" Text="0 tracked" Style="{StaticResource Muted}" />
                 </StackPanel>
             </Border>
 
             <Border Grid.Column="2" Style="{StaticResource Card}">
                 <StackPanel>
-                    <TextBlock Text="Perfect rate" Style="{StaticResource MetricLabel}" />
+                    <TextBlock Text="Clean rate" Style="{StaticResource MetricLabel}" />
                     <TextBlock x:Name="PerfectRateText" Text="0%" Style="{StaticResource MetricValue}" Foreground="{StaticResource Accent2Brush}" />
-                    <TextBlock x:Name="PerfectDetailText" Text="0 perfect" Style="{StaticResource Muted}" />
+                    <TextBlock x:Name="PerfectDetailText" Text="0 clean" Style="{StaticResource Muted}" />
                 </StackPanel>
             </Border>
 
@@ -127,130 +140,185 @@
             </Border>
         </Grid>
 
-        <Grid Grid.Row="2" Margin="0,8,0,0">
+        <Grid x:Name="MainViewport" Grid.Row="2" ClipToBounds="True">
+        <Grid x:Name="MainChrome" Margin="0,8,0,0" SizeChanged="MainChrome_SizeChanged">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2.05*" />
                 <ColumnDefinition Width="1.45*" />
+                <ColumnDefinition Width="1*" />
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="0" />
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource Card}">
+            <Border x:Name="CoachingCard" Grid.Row="0" Grid.Column="0" Style="{StaticResource Card}">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="112" />
-                        <ColumnDefinition Width="112" />
-                        <ColumnDefinition Width="112" />
-                        <ColumnDefinition Width="112" />
+                        <ColumnDefinition />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="Coaching" FontSize="18" FontWeight="SemiBold" />
-                        <TextBlock x:Name="TipText" Text="Start a session, strafe A/D, counter-strafe, move the mouse, and click. Tips appear after a few attempts." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,18,0" />
+                    <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                        <TextBlock Text="Current coaching" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock x:Name="TipText" Text="Record 5 click-confirmed attempts to get one short live tip based on your recent pattern." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <ComboBox x:Name="FocusComboBox" SelectedIndex="0" Visibility="Collapsed" SelectionChanged="FocusComboBox_SelectionChanged">
+                            <ComboBoxItem Content="Overall" />
+                        </ComboBox>
+                        <TextBlock x:Name="FocusFeedbackText" Visibility="Collapsed" />
+                        <TextBlock x:Name="LatestAttemptText" Visibility="Collapsed" />
+                        <TextBlock x:Name="DirectionWeaknessText" Visibility="Collapsed" />
+                        <TextBlock x:Name="QualityScoreText" Visibility="Collapsed" />
+                        <TextBlock x:Name="PracticePrescriptionText" Visibility="Collapsed" />
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Margin="6,0">
-                        <TextBlock Text="Counter min" Style="{StaticResource SmallLabel}" />
-                        <TextBox x:Name="CounterMinBox" Text="0" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" Margin="6,0">
-                        <TextBlock Text="Counter max" Style="{StaticResource SmallLabel}" />
-                        <TextBox x:Name="CounterMaxBox" Text="80" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="3" Margin="6,0">
-                        <TextBlock Text="Click min" Style="{StaticResource SmallLabel}" />
-                        <TextBox x:Name="ClickMinBox" Text="0" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="4" Margin="6,0">
-                        <TextBlock Text="Click max" Style="{StaticResource SmallLabel}" />
-                        <TextBox x:Name="ClickMaxBox" Text="160" />
-                    </StackPanel>
+                    <Button x:Name="OpenConclusionsButton" Grid.Column="1" Content="Conclusions" Click="OpenConclusionsButton_Click" Background="#29324A" VerticalAlignment="Center" Visibility="Collapsed" IsEnabled="False" ToolTip="Use the Conclusions button in the header." />
                 </Grid>
             </Border>
 
-            <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource Card}">
+            <Border x:Name="AttemptsCard" Grid.Row="1" Grid.Column="0" Style="{StaticResource Card}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <StackPanel Grid.Row="0">
-                        <TextBlock Text="Game calibration" FontSize="18" FontWeight="SemiBold" />
-                        <TextBlock Text="Enter your in-game values to convert raw mouse counts into estimated degrees and cm/360." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,8" />
-                    </StackPanel>
-                    <Grid Grid.Row="1">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition />
-                            <ColumnDefinition />
-                            <ColumnDefinition />
-                            <ColumnDefinition />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                            <TextBlock Text="DPI" Style="{StaticResource SmallLabel}" />
-                            <TextBox x:Name="DpiBox" Text="800" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" Margin="6,0">
-                            <TextBlock Text="Sens" Style="{StaticResource SmallLabel}" />
-                            <TextBox x:Name="SensBox" Text="1.0" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Margin="6,0">
-                            <TextBlock Text="Yaw" Style="{StaticResource SmallLabel}" />
-                            <TextBox x:Name="YawBox" Text="0.022" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="3" Margin="6,0">
-                            <TextBlock Text="Pitch" Style="{StaticResource SmallLabel}" />
-                            <TextBox x:Name="PitchBox" Text="0.022" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="4" Margin="6,0,0,0">
-                            <TextBlock Text="Mult" Style="{StaticResource SmallLabel}" />
-                            <TextBox x:Name="MultiplierBox" Text="1.0" />
-                        </StackPanel>
-                    </Grid>
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
-                        <TextBlock x:Name="Cm360Text" Text="cm/360 unavailable" Style="{StaticResource Muted}" Margin="0,0,18,0" />
-                        <TextBlock x:Name="DegreesPerCountText" Text="0.000000 deg/count X" Style="{StaticResource Muted}" />
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource Card}">
-                <Grid>
-                    <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <TextBlock Text="Recent counter-strafe attempts" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10" />
-                    <DataGrid x:Name="AttemptsGrid" Grid.Row="1">
+                    <StackPanel Grid.Row="0" Margin="0,0,0,8">
+                        <TextBlock Text="Recent counter-strafe attempts" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="Only click-confirmed counter-strafe attempts are shown. Click a row to highlight that trace." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                    </StackPanel>
+
+                    <WrapPanel x:Name="AttemptFilterPanel" Grid.Row="1" Margin="0,0,0,8">
+                        <CheckBox x:Name="ShowIncludedAttemptsCheckBox" Content="Show active" IsChecked="True" Checked="AttemptFilter_Changed" Unchecked="AttemptFilter_Changed" />
+                        <CheckBox x:Name="ShowFilteredAttemptsCheckBox" Content="Show unchecked" IsChecked="True" Checked="AttemptFilter_Changed" Unchecked="AttemptFilter_Changed" />
+                        <CheckBox x:Name="ShowPerfectCheckBox" Content="Clean" IsChecked="True" Checked="AttemptFilter_Changed" Unchecked="AttemptFilter_Changed" />
+                        <CheckBox x:Name="ShowOverlapCheckBox" Content="Overlap" IsChecked="True" Checked="AttemptFilter_Changed" Unchecked="AttemptFilter_Changed" />
+                        <CheckBox x:Name="ShowLateCheckBox" Content="Late counter/click" IsChecked="True" Checked="AttemptFilter_Changed" Unchecked="AttemptFilter_Changed" />
+                        <CheckBox x:Name="ShowEarlyClickCheckBox" Content="Early click" IsChecked="True" Checked="AttemptFilter_Changed" Unchecked="AttemptFilter_Changed" />
+                    </WrapPanel>
+
+                    <Grid Grid.Row="2" Margin="0,0,0,8">
+                        <TextBlock Text="No-shot movements are hidden from this list and excluded from reporting. Use the checkbox to exclude warmups, accidental shots, or attempts that are not useful for analysis." Style="{StaticResource Muted}" TextWrapping="Wrap" />
+                        <StackPanel Visibility="Collapsed">
+                            <CheckBox x:Name="AutoTagJigglesCheckBox" IsChecked="True" />
+                            <CheckBox x:Name="ExcludeJigglesCheckBox" IsChecked="True" />
+                            <CheckBox x:Name="HideJigglesCheckBox" />
+                            <TextBox x:Name="JiggleAgeBox" Text="260" />
+                            <TextBox x:Name="JiggleMouseBox" Text="0.08" />
+                        </StackPanel>
+                    </Grid>
+
+                    <DataGrid x:Name="AttemptsGrid" Grid.Row="3" IsReadOnly="False" SelectionMode="Extended" SelectionUnit="FullRow" SelectionChanged="AttemptsGrid_SelectionChanged" KeyDown="AttemptsGrid_KeyDown" VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled" EnableRowVirtualization="True" EnableColumnVirtualization="True" ScrollViewer.CanContentScroll="True">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Setter Property="BorderBrush" Value="{StaticResource WindowBgBrush}" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding StartsSessionBlock}" Value="True">
+                                        <Setter Property="BorderThickness" Value="0,10,0,0" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="48" />
-                            <DataGridTextColumn Header="Direction" Binding="{Binding Direction}" Width="105" />
-                            <DataGridTextColumn Header="Counter delay" Binding="{Binding CounterDelayLabel}" Width="120" />
-                            <DataGridTextColumn Header="Click after counter" Binding="{Binding ClickLabel}" Width="140" />
-                            <DataGridTextColumn Header="Grade" Binding="{Binding Grade}" Width="110" />
-                            <DataGridTextColumn Header="Aim delta" Binding="{Binding AimDeltaLabel}" Width="190" />
-                            <DataGridTextColumn Header="Mouse path" Binding="{Binding PathLabel}" Width="150" />
-                            <DataGridTextColumn Header="Trace pts" Binding="{Binding TracePointsLabel}" Width="85" />
+                            <DataGridTemplateColumn x:Name="UseColumn" Header="Use" Width="0" Visibility="Collapsed">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding IsIncluded, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Click="AttemptIncludeCheckBox_Changed" HorizontalAlignment="Center" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn x:Name="IndexColumn" Header="#" Binding="{Binding Index}" Width="42" IsReadOnly="True" />
+                            <DataGridTextColumn x:Name="DirectionColumn" Header="Dir" Binding="{Binding DirectionSymbol}" Width="58" IsReadOnly="True" />
+                            <DataGridTextColumn x:Name="CounterDelayColumn" Header="Key wait" Binding="{Binding CounterDelayLabel}" Width="92" IsReadOnly="True" />
+                            <DataGridTextColumn x:Name="ClickDelayColumn" Header="Click wait" Binding="{Binding ClickLabel}" Width="94" IsReadOnly="True" />
+                            <DataGridTextColumn x:Name="TotalTimeColumn" Header="Total time" Binding="{Binding TotalTimeLabel}" Width="96" IsReadOnly="True" />
+                            <DataGridTextColumn x:Name="TraceColumn" Header="Trace" Binding="{Binding TraceLabel}" Width="52" IsReadOnly="True" />
+                            <DataGridTextColumn x:Name="MistakesColumn" Header="Mistakes" Binding="{Binding MistakeLabel}" Width="SizeToCells" MinWidth="126" IsReadOnly="True" />
+                            <DataGridTextColumn x:Name="ResultColumn" Header="Result" Binding="{Binding ResultLabel}" Width="82" IsReadOnly="True" />
+                            <DataGridTextColumn x:Name="WhatHappenedColumn" Header="What happened" Binding="{Binding TableWhatHappened}" Width="*" MinWidth="160" IsReadOnly="True" />
                         </DataGrid.Columns>
                     </DataGrid>
+
                 </Grid>
             </Border>
 
-            <Grid Grid.Row="1" Grid.Column="1">
+            <Grid x:Name="TraceReplayCard" Grid.Row="0" Grid.RowSpan="2" Grid.Column="1">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="1.2*" />
-                    <RowDefinition Height="0.9*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Style="{StaticResource Card}">
+                <Border x:Name="ReplayCard" Grid.Row="0" Style="{StaticResource Card}" Padding="12" Margin="0,0,0,12">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="68" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Selected attempt key replay" FontSize="16" FontWeight="SemiBold" />
+                                <TextBlock Text="Select an attempt, then replay the A/D release, opposite-key press, and M1 click in slow motion." Style="{StaticResource Muted}" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <WrapPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
+                                <Button Content="1x" Tag="1" Height="30" Padding="14,6" Margin="0,0,6,0" Click="ReplaySpeedButton_Click" ToolTip="Replay at normal speed" />
+                                <Button x:Name="Replay5SlowButton" Content="5x slow" Tag="5" Height="30" Padding="14,6" Margin="0,0,6,0" Click="ReplaySpeedButton_Click" ToolTip="Replay five times slower" />
+                                <Button Content="10x slow" Tag="10" Height="30" Padding="14,6" Margin="0,0,6,0" Click="ReplaySpeedButton_Click" ToolTip="Replay ten times slower" />
+                                <TextBox x:Name="ReplayCustomSlowBox" Text="5" Width="48" Height="30" Margin="0,0,6,0" ToolTip="Custom slow factor. Example: 8 means the replay takes 8x longer." />
+                                <Button Content="Slow (x)" Height="30" Padding="12,6" Margin="0,0,6,0" Click="ReplayCustomSlowButton_Click" ToolTip="Play using the custom slow factor." />
+                                <Button Content="Pause" Height="30" Padding="14,6" Background="#29324A" Click="ReplayStopButton_Click" />
+                            </WrapPanel>
+                        </Grid>
+
+                        <Grid Grid.Row="1" Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="KeyABox" Grid.Column="0" Background="#111827" BorderBrush="#334155" BorderThickness="1" CornerRadius="12" Padding="12" Margin="0,0,8,0">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="A" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="KeyAStateText" Text="up" Style="{StaticResource Muted}" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="KeyDBox" Grid.Column="1" Background="#111827" BorderBrush="#334155" BorderThickness="1" CornerRadius="12" Padding="12" Margin="4,0">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="D" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="KeyDStateText" Text="up" Style="{StaticResource Muted}" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="KeyM1Box" Grid.Column="2" Background="#111827" BorderBrush="#334155" BorderThickness="1" CornerRadius="12" Padding="12" Margin="8,0,0,0">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="M1" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="KeyM1StateText" Text="up" Style="{StaticResource Muted}" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <Border Grid.Row="2" Background="#08101E" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
+                            <Canvas x:Name="ReplayTimelineCanvas" Background="#08101E" SizeChanged="ReplayTimeline_SizeChanged" MouseLeftButtonDown="ReplayTimelineCanvas_MouseLeftButtonDown" MouseMove="ReplayTimelineCanvas_MouseMove" MouseLeftButtonUp="ReplayTimelineCanvas_MouseLeftButtonUp" MouseLeave="ReplayTimelineCanvas_MouseLeave" />
+                        </Border>
+
+                        <TextBlock x:Name="ReplayGuidanceText" Grid.Row="3" Text="Target timing tips appear here when you select an attempt." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                        <TextBlock x:Name="ReplayStatusText" Grid.Row="4" Text="Select a click-confirmed attempt to replay its key timing." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    </Grid>
+                </Border>
+
+                <Border x:Name="MouseTraceCard" Grid.Row="1" Style="{StaticResource Card}" Padding="12">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
+
                         <Grid Grid.Row="0" Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition />
@@ -258,36 +326,75 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel>
                                 <TextBlock Text="Mouse trace overlay" FontSize="18" FontWeight="SemiBold" />
-                                <TextBlock Text="Every trace starts at the counter-key press and ends at the first M1 click." Style="{StaticResource Muted}" />
+                                <TextBlock Text="Every trace starts at the counter-key press and ends at the first M1 click. Selected row is drawn brighter." Style="{StaticResource Muted}" TextWrapping="Wrap" />
                             </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                <CheckBox x:Name="ShowUniqueLinesCheckBox" Content="Unique lines" IsChecked="True" Checked="TraceOption_Changed" Unchecked="TraceOption_Changed" />
-                                <CheckBox x:Name="ShowAverageLineCheckBox" Content="Average" IsChecked="True" Checked="TraceOption_Changed" Unchecked="TraceOption_Changed" />
-                                <CheckBox x:Name="ShowClickMarkersCheckBox" Content="Click dots" IsChecked="True" Checked="TraceOption_Changed" Unchecked="TraceOption_Changed" />
-                                <TextBox x:Name="TraceCountBox" Text="24" Width="52" Margin="0,0,0,0" />
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <WrapPanel HorizontalAlignment="Right" Margin="0,0,0,6">
+                                    <CheckBox x:Name="ShowUniqueLinesCheckBox" Content="Unique lines" IsChecked="True" Checked="TraceOption_Changed" Unchecked="TraceOption_Changed" />
+                                    <CheckBox x:Name="ShowAverageLineCheckBox" Content="Average" IsChecked="True" Checked="TraceOption_Changed" Unchecked="TraceOption_Changed" />
+                                    <CheckBox x:Name="ShowClickMarkersCheckBox" Content="Click dots" IsChecked="True" Checked="TraceOption_Changed" Unchecked="TraceOption_Changed" />
+                                </WrapPanel>
+                                <WrapPanel HorizontalAlignment="Right">
+                                    <TextBlock Text="traces" Style="{StaticResource SmallLabel}" VerticalAlignment="Center" Margin="0,0,6,0" ToolTip="Maximum number of recent included attempts drawn in the overlay." />
+                                    <TextBox x:Name="TraceCountBox" Text="24" Width="52" Margin="0,0,10,0" ToolTip="Maximum number of recent included attempts drawn in the overlay." />
+                                </WrapPanel>
                             </StackPanel>
                         </Grid>
-                        <Border Grid.Row="1" Background="#08101E" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14" ClipToBounds="True">
-                            <Canvas x:Name="TraceCanvas" Background="#08101E" />
+
+                        <Border x:Name="MouseTracePanel" Grid.Row="1" Background="#08101E" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14" ClipToBounds="True" MinHeight="120">
+                            <Grid>
+                                <Canvas x:Name="TraceCanvas" Background="#08101E" MouseWheel="TraceCanvas_MouseWheel" MouseLeftButtonDown="TraceCanvas_MouseLeftButtonDown" MouseLeftButtonUp="TraceCanvas_MouseLeftButtonUp" MouseMove="TraceCanvas_MouseMove" MouseLeave="TraceCanvas_MouseLeave" />
+                                <Button Content="Reset" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10" Padding="12,6" Background="#29324A" Click="TraceZoomResetButton_Click" ToolTip="Reset mouse trace zoom and pan" />
+                            </Grid>
                         </Border>
                         <TextBlock x:Name="TraceStatsText" Grid.Row="2" Text="No mouse trace yet." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0" />
                     </Grid>
                 </Border>
-
-                <Border Grid.Row="1" Style="{StaticResource Card}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <StackPanel Margin="0,0,0,10">
-                            <TextBlock Text="Recent input edges" FontSize="18" FontWeight="SemiBold" />
-                            <TextBlock Text="Tracks A, D, M1, M2, and raw mouse movement only during visible sessions. Data stays local." Style="{StaticResource Muted}" TextWrapping="Wrap" />
-                        </StackPanel>
-                        <ListBox x:Name="EventsList" Grid.Row="1" DisplayMemberPath="Label" Background="#10172A" BorderBrush="{StaticResource BorderBrush}" Foreground="{StaticResource TextBrush}" />
-                    </Grid>
-                </Border>
             </Grid>
         </Grid>
+        </Grid>
+
+        <Border x:Name="ModeHostBorder" Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="100" Background="{StaticResource WindowBgBrush}" Visibility="Collapsed">
+            <ContentControl x:Name="ModeHost" />
+        </Border>
+
+        <Canvas x:Name="GuidedDemoSpotlightOverlay" Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="200" Visibility="Collapsed" IsHitTestVisible="False">
+            <Rectangle x:Name="GuidedDemoDimTop" Fill="#CC000000" />
+            <Rectangle x:Name="GuidedDemoDimLeft" Fill="#CC000000" />
+            <Rectangle x:Name="GuidedDemoDimRight" Fill="#CC000000" />
+            <Rectangle x:Name="GuidedDemoDimBottom" Fill="#CC000000" />
+        </Canvas>
+
+        <Border x:Name="GuidedDemoBubble" Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="220" Width="440" MaxWidth="520" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="18" Background="#FFF2B8" BorderBrush="#FFCE45" BorderThickness="3" CornerRadius="18" Padding="16" Visibility="Collapsed">
+            <StackPanel>
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock x:Name="GuidedDemoStepText" Text="1/10" Foreground="#5B4600" FontSize="13" FontWeight="SemiBold" />
+                        <TextBlock x:Name="GuidedDemoTitleText" Text="Demo step" Foreground="#111827" FontSize="20" FontWeight="Bold" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="×" Click="GuidedDemoExitButton_Click" Background="#172036" Padding="10,5" VerticalAlignment="Top" ToolTip="Exit demo" />
+                </Grid>
+                <TextBlock x:Name="GuidedDemoBodyText" TextWrapping="Wrap" Foreground="#172036" FontSize="14" LineHeight="20" />
+                <TextBlock x:Name="GuidedDemoWarningText" TextWrapping="Wrap" Foreground="#B45309" Margin="0,10,0,0" Visibility="Collapsed" />
+                <WrapPanel HorizontalAlignment="Right" Margin="0,14,0,0">
+                    <Button x:Name="GuidedDemoBackButton" Content="Back" Click="GuidedDemoBackButton_Click" Background="#29324A" Margin="0,0,8,0" />
+                    <Button x:Name="GuidedDemoNextButton" Content="Next" Click="GuidedDemoNextButton_Click" />
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <Border x:Name="GuidedDemoCompletionOverlay" Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="230" Background="#99000000" Visibility="Collapsed">
+            <Border Width="520" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#10182C" BorderBrush="{StaticResource Accent2Brush}" BorderThickness="2" CornerRadius="22" Padding="24">
+                <StackPanel>
+                    <TextBlock Text="Have fun using StrafeLab" FontSize="26" FontWeight="Bold" />
+                    <TextBlock Text="Check the demo again by pressing the Demo button in Settings. Good luck!" TextWrapping="Wrap" Style="{StaticResource Muted}" FontSize="15" Margin="0,10,0,20" />
+                    <Button Content="OK" Click="GuidedDemoCompletionOkButton_Click" HorizontalAlignment="Right" Padding="18,10" />
+                </StackPanel>
+            </Border>
+        </Border>
     </Grid>
 </Window>

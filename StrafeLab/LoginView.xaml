@@ -9,6 +9,11 @@
             <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
             <Setter Property="FontSize" Value="13" />
         </Style>
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="FontSize" Value="22" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
         <Style TargetType="PasswordBox">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Background" Value="{StaticResource SoftBrush}" />
@@ -30,67 +35,66 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock x:Name="AccountTitleText" Text="Choose how you want to use StrafeLab" FontSize="34" FontWeight="Bold" />
-                <TextBlock x:Name="AccountSubtitleText" Text="Choose how you want to use StrafeLab." Style="{StaticResource Muted}" />
+                <TextBlock x:Name="AccountTitleText" Text="Welcome to StrafeLab" FontSize="34" FontWeight="Bold" />
+                <TextBlock x:Name="AccountSubtitleText" Text="Create an online profile to save CS2 practice stats, join clans, and compare your progress. Local-only is available if you just want to train on this PC." Style="{StaticResource Muted}" TextWrapping="Wrap" />
             </StackPanel>
-            <Button x:Name="BackButton" Grid.Column="1" Content="Back" Click="BackButton_Click" Background="#29324A" VerticalAlignment="Center" />
+            <Button Grid.Column="1" x:Name="BackButton" Content="Back" Click="BackButton_Click" Background="#29324A" VerticalAlignment="Center" />
         </Grid>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1.1*" />
-                    <ColumnDefinition Width="0.9*" />
+                    <ColumnDefinition Width="1.08*" />
+                    <ColumnDefinition Width="0.92*" />
                 </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0" Style="{StaticResource Card}">
-                    <StackPanel>
-                        <Border Background="{StaticResource SoftBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="16" Padding="16" Margin="0,0,0,18">
-                            <StackPanel>
-                                <TextBlock Text="Choose your privacy option" FontSize="20" FontWeight="SemiBold" />
-                                <TextBlock Text="Share non-personal practice summaries such as hits, misses, timings and session results to help improve StrafeLab." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,12" />
-                                <TextBlock Text="Display name" Style="{StaticResource Muted}" />
-                                <TextBox x:Name="AnonymousNameBox" Margin="0,4,0,12" ToolTip="Used to group your summary stats. Allowed: letters, numbers, underscore, dot." />
-                                <Button x:Name="ShareStatsButton" Content="Continue with shared practice summaries" Click="ShareStatsButton_Click" HorizontalAlignment="Left" />
-                                <Button x:Name="FullOptOutButton" Content="No, fuck off, collect some sand instead of my NON PERSONALIZED data" Click="FullOptOutButton_Click" HorizontalAlignment="Left" Background="#29324A" Margin="0,8,0,0" ToolTip="Use StrafeLab locally only. No account, no anonymous stats sharing, no cloud sync." />
-                                <TextBlock Text="You can change your mind later by creating or signing in to an account." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,0,0" />
-                            </StackPanel>
-                        </Border>
+                <StackPanel Grid.Column="0">
+                    <Border Style="{StaticResource Card}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1.6">
+                        <StackPanel>
+                            <TextBlock Text="Online profile — recommended" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="Use this for synced summaries, clans, profile stats, and progress that survives local resets. No email is needed to start." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,16" />
 
-                        <TextBlock Text="Or sign in with an account" FontSize="22" FontWeight="SemiBold" />
-                        <TextBlock Text="Use an account if you want your profile, clans and team dashboard progress to carry over between sessions." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,18" />
+                            <TextBlock Text="Username" Style="{StaticResource Muted}" />
+                            <TextBox x:Name="UsernameBox" Margin="0,4,0,12" ToolTip="Allowed: letters, numbers, underscore, dot. Friends use this to invite you." />
 
-                        <TextBlock Text="Email" Style="{StaticResource Muted}" />
-                        <TextBox x:Name="EmailBox" Margin="0,4,0,12" />
+                            <TextBlock Text="Password" Style="{StaticResource Muted}" />
+                            <PasswordBox x:Name="PasswordBox" Margin="0,4,0,18" KeyDown="PasswordBox_KeyDown" />
 
-                        <TextBlock Text="Password" Style="{StaticResource Muted}" />
-                        <PasswordBox x:Name="PasswordBox" Margin="0,4,0,12" KeyDown="PasswordBox_KeyDown" />
+                            <WrapPanel>
+                                <Button x:Name="CreateButton" Content="Create online profile" Click="CreateButton_Click" Margin="0,0,8,8" />
+                                <Button x:Name="SignInButton" Content="Sign in" Click="SignInButton_Click" Background="#29324A" Margin="0,0,8,8" />
+                                <Button x:Name="SignOutButton" Content="Sign out" Click="SignOutButton_Click" Background="#29324A" Margin="0,0,8,8" />
+                            </WrapPanel>
 
-                        <TextBlock Text="Username for new accounts" Style="{StaticResource Muted}" />
-                        <TextBox x:Name="UsernameBox" Margin="0,4,0,18" ToolTip="Used by friends to invite you. Allowed: letters, numbers, underscore, dot." />
+                            <TextBlock x:Name="StatusText" Text="Create or sign in with username and password." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,14,0,0" />
+                        </StackPanel>
+                    </Border>
 
-                        <WrapPanel>
-                            <Button x:Name="SignInButton" Content="Sign in" Click="SignInButton_Click" Margin="0,0,8,8" />
-                            <Button x:Name="CreateButton" Content="Create account" Click="CreateButton_Click" Background="#29324A" Margin="0,0,8,8" />
-                            <Button x:Name="SignOutButton" Content="Sign out" Click="SignOutButton_Click" Background="#29324A" Margin="0,0,8,8" />
-                        </WrapPanel>
-
-                        <TextBlock x:Name="StatusText" Text="Not signed in." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,14,0,0" />
-                    </StackPanel>
-                </Border>
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Local-only" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="Use StrafeLab without an account. Raw inputs, traces, and summaries stay on this PC. Clans and synced progress are disabled." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,12" />
+                            <Button x:Name="FullOptOutButton" Content="Continue local-only" Click="FullOptOutButton_Click" HorizontalAlignment="Left" Background="#29324A" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
 
                 <Border Grid.Column="1" Style="{StaticResource Card}">
                     <StackPanel>
-                        <TextBlock Text="What gets shared" FontSize="22" FontWeight="SemiBold" />
-                        <TextBlock Text="Only saved session summaries are uploaded: attempts, clean shots, moving shots, overlaps, slow counters and average timing values." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,14" />
-                        <TextBlock Text="What stays local" FontSize="18" FontWeight="SemiBold" Margin="0,12,0,4" />
-                        <TextBlock Text="Raw keyboard events, raw mouse movement, mouse traces, screenshots and exported CSV files stay on your PC. They are not uploaded by StrafeLab." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,10" />
-                        <TextBlock Text="Privacy defaults" FontSize="18" FontWeight="SemiBold" Margin="0,12,0,4" />
-                        <TextBlock Text="Profiles start private. You decide whether other clan members can open your profile from leaderboards. You can change this later from your profile page." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,10" />
-                        <TextBlock Text="For new users" FontSize="18" FontWeight="SemiBold" Margin="0,12,0,4" />
-                        <TextBlock Text="StrafeLab is a practice tool. The shared stats are meant to help improve the app and compare practice progress." Style="{StaticResource Muted}" TextWrapping="Wrap" />
-                        <TextBlock Text="Need help?" FontSize="18" FontWeight="SemiBold" Margin="0,18,0,4" />
-                        <TextBlock Text="Ask the StrafeLab owner if account or clan features are not available yet." Style="{StaticResource Muted}" TextWrapping="Wrap" />
+                        <TextBlock Text="Train cleaner counter-strafes" FontSize="26" FontWeight="Bold" />
+                        <TextBlock Text="StrafeLab turns your A/D timing, first-shot discipline, and mouse movement into a clear practice plan." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,18" />
+
+                        <TextBlock Text="See every attempt" FontSize="18" FontWeight="SemiBold" Margin="0,4,0,4" />
+                        <TextBlock Text="Every rep is listed with direction, counter delay, click delay, mistakes, and a short explanation." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,14" />
+
+                        <TextBlock Text="Replay the exact key order" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,4" />
+                        <TextBlock Text="Select an attempt and watch A, D, and M1 in slow motion. This is the fastest way to understand why a shot was clean, late, or moving." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,14" />
+
+                        <TextBlock Text="Connect aim and movement" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,4" />
+                        <TextBlock Text="Mouse traces show how much your crosshair moved between the counter-strafe and the shot, so you can spot rushed corrections and messy sprays." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,14" />
+
+                        <TextBlock Text="Leave with a short practice plan" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,4" />
+                        <TextBlock Text="Conclusions turn the session into specific drills: stop before shooting, fix one direction, reduce overlap, or clean up mouse corrections." Style="{StaticResource Muted}" TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
             </Grid>

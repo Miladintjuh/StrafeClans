@@ -17,6 +17,7 @@ public sealed class InputEventRecord
     public InputKind Kind { get; set; }
     public int DeltaX { get; set; }
     public int DeltaY { get; set; }
+    public int SessionSerial { get; set; } = 1;
 
     public string Label => Kind == InputKind.MouseMove
         ? $"{SessionTimeMs,9:0.0} ms  MOVE   dx {DeltaX,5} dy {DeltaY,5}"

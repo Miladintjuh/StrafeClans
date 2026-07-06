@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 using StrafeLab.Models;
 
@@ -11,20 +12,24 @@ namespace StrafeLab;
 
 public partial class SettingsView : UserControl
 {
+    public Border CalibrationDemoTarget => CalibrationCard;
     private readonly AppPreferences _preferences;
     private string? _activeColorKey;
     private Button? _activeColorButton;
     private bool _loading;
     private bool _updatingPicker;
+    private string? _recordingHotkeyTarget;
     private ColorPreferences _loadedColors = new();
 
     public event Action? BackRequested;
+    public event Action? ShowDemoRequested;
     public event Action<AppPreferences>? PreferencesApplied;
 
     public SettingsView(AppPreferences preferences)
     {
         InitializeComponent();
         _preferences = preferences;
+        PreviewKeyDown += SettingsView_PreviewKeyDown;
         Loaded += (_, _) => LoadFromPreferences();
     }
 
@@ -32,10 +37,9 @@ public partial class SettingsView : UserControl
     {
         _loading = true;
         _loadedColors = _preferences.Colors.Clone();
-        string[] hotkeys = ["F6", "F7", "F8", "F9", "F10", "F11", "F12", "Q", "E", "R", "T", "Y"];
-        FillHotkeyBox(StartStopHotkeyBox, hotkeys, _preferences.StartStopHotkey);
-        FillHotkeyBox(PeekHotkeyBox, hotkeys, _preferences.PeekArmHotkey);
-        FillHotkeyBox(RemoveHotkeyBox, hotkeys, _preferences.RemoveLastHotkey);
+        SetHotkeyButtonText(StartStopHotkeyButton, _preferences.StartStopHotkey);
+        SetHotkeyButtonText(PeekHotkeyButton, _preferences.PeekArmHotkey);
+        SetHotkeyButtonText(RemoveHotkeyButton, _preferences.RemoveLastHotkey);
         FillModeSwitchBox();
 
         UseColumnCheckBox.IsChecked = _preferences.Columns.Use;
@@ -52,6 +56,9 @@ public partial class SettingsView : UserControl
         ClickMinBox.Text = _preferences.ClickMinMs.ToString(CultureInfo.InvariantCulture);
         ClickMaxBox.Text = _preferences.ClickMaxMs.ToString(CultureInfo.InvariantCulture);
         KeyboardOverlapToleranceBox.Text = _preferences.HallEffectToleranceMs.ToString(CultureInfo.InvariantCulture);
+        CleanFastMaxBox.Text = _preferences.CleanFastMaxTotalMs.ToString(CultureInfo.InvariantCulture);
+        CleanPerfectMaxBox.Text = _preferences.CleanPerfectMaxTotalMs.ToString(CultureInfo.InvariantCulture);
+        CleanJustInTimeMinBox.Text = _preferences.CleanJustInTimeMinTotalMs.ToString(CultureInfo.InvariantCulture);
 
         DpiBox.Text = _preferences.Dpi.ToString(CultureInfo.InvariantCulture);
         SensBox.Text = _preferences.Sensitivity.ToString(CultureInfo.InvariantCulture);
@@ -62,6 +69,9 @@ public partial class SettingsView : UserControl
         PeekCleanMaxBox.Text = _preferences.PeekCleanMaxMs.ToString(CultureInfo.InvariantCulture);
         PeekOverlapToleranceBox.Text = _preferences.PeekOverlapToleranceMs.ToString(CultureInfo.InvariantCulture);
         PeekSprayHoldBox.Text = _preferences.PeekSprayHoldMs.ToString(CultureInfo.InvariantCulture);
+        PeekMouseTraceMaxBox.Text = _preferences.PeekMouseTraceMaxMs.ToString(CultureInfo.InvariantCulture);
+        PeekMouseTracePointsBox.Text = _preferences.PeekMouseTraceMaxPoints.ToString(CultureInfo.InvariantCulture);
+        PeekResetAfterClickBox.Text = _preferences.PeekResetMouseAfterClickMs.ToString(CultureInfo.InvariantCulture);
 
         ShowAdvancedFiltersCheckBox.IsChecked = _preferences.ShowAdvancedFilters;
         PlaySoundsCheckBox.IsChecked = _preferences.PlayHotkeySounds;
@@ -72,11 +82,65 @@ public partial class SettingsView : UserControl
         _loading = false;
     }
 
-    private static void FillHotkeyBox(ComboBox box, IEnumerable<string> values, string selected)
+    private static void SetHotkeyButtonText(Button button, string hotkey)
     {
-        box.Items.Clear();
-        foreach (var value in values) box.Items.Add(value);
-        box.SelectedItem = values.Contains(selected) ? selected : values.First();
+        button.Content = string.IsNullOrWhiteSpace(hotkey) ? "Record" : $"Record: {hotkey}";
+    }
+
+    private void RecordHotkeyButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.Tag is null) return;
+        _recordingHotkeyTarget = button.Tag.ToString();
+        button.Content = "Press a key...";
+        button.Focus();
+    }
+
+    private void SettingsView_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_recordingHotkeyTarget)) return;
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        if (key is Key.LeftShift or Key.RightShift or Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LWin or Key.RWin) return;
+        string display = HotkeyDisplayName(key);
+        if (string.IsNullOrWhiteSpace(display)) return;
+
+        switch (_recordingHotkeyTarget)
+        {
+            case "StartStop":
+                _preferences.StartStopHotkey = display;
+                SetHotkeyButtonText(StartStopHotkeyButton, display);
+                break;
+            case "Peek":
+                _preferences.PeekArmHotkey = display;
+                SetHotkeyButtonText(PeekHotkeyButton, display);
+                break;
+            case "Remove":
+                _preferences.RemoveLastHotkey = display;
+                SetHotkeyButtonText(RemoveHotkeyButton, display);
+                break;
+        }
+        _recordingHotkeyTarget = null;
+        e.Handled = true;
+    }
+
+    private static string HotkeyDisplayName(Key key)
+    {
+        if (key >= Key.A && key <= Key.Z) return key.ToString();
+        if (key >= Key.F1 && key <= Key.F24) return key.ToString();
+        if (key >= Key.D0 && key <= Key.D9) return key.ToString()[1..];
+        return key switch
+        {
+            Key.Space => "Space",
+            Key.Insert => "Insert",
+            Key.Delete => "Delete",
+            Key.Home => "Home",
+            Key.End => "End",
+            Key.PageUp => "PageUp",
+            Key.PageDown => "PageDown",
+            Key.Oem3 => "`",
+            Key.OemMinus => "-",
+            Key.OemPlus => "=",
+            _ => key.ToString()
+        };
     }
 
     private void FillModeSwitchBox()
@@ -117,6 +181,10 @@ public partial class SettingsView : UserControl
         _preferences.ClickMinMs = ParseDouble(ClickMinBox.Text, 0);
         _preferences.ClickMaxMs = ParseDouble(ClickMaxBox.Text, 160);
         _preferences.HallEffectToleranceMs = ParseDouble(KeyboardOverlapToleranceBox.Text, 8);
+        _preferences.CleanFastMaxTotalMs = ParseDouble(CleanFastMaxBox.Text, 90);
+        _preferences.CleanPerfectMaxTotalMs = ParseDouble(CleanPerfectMaxBox.Text, 145);
+        _preferences.CleanJustInTimeMinTotalMs = ParseDouble(CleanJustInTimeMinBox.Text, 190);
+        NormalizeCleanTimingThresholds();
 
         _preferences.Dpi = ParseDouble(DpiBox.Text, 1600);
         _preferences.Sensitivity = ParseDouble(SensBox.Text, 0.4);
@@ -127,10 +195,13 @@ public partial class SettingsView : UserControl
         _preferences.PeekCleanMaxMs = ParseDouble(PeekCleanMaxBox.Text, 45);
         _preferences.PeekOverlapToleranceMs = ParseDouble(PeekOverlapToleranceBox.Text, 8);
         _preferences.PeekSprayHoldMs = ParseDouble(PeekSprayHoldBox.Text, 180);
+        _preferences.PeekMouseTraceMaxMs = ParseDouble(PeekMouseTraceMaxBox.Text, 900);
+        _preferences.PeekMouseTraceMaxPoints = Math.Clamp(ParseInt(PeekMouseTracePointsBox.Text, 180), 16, 1000);
+        _preferences.PeekResetMouseAfterClickMs = ParseDouble(PeekResetAfterClickBox.Text, 250);
 
-        _preferences.StartStopHotkey = StartStopHotkeyBox.SelectedItem?.ToString() ?? "F9";
-        _preferences.PeekArmHotkey = PeekHotkeyBox.SelectedItem?.ToString() ?? "F8";
-        _preferences.RemoveLastHotkey = RemoveHotkeyBox.SelectedItem?.ToString() ?? "Q";
+        _preferences.StartStopHotkey = ExtractRecordedHotkey(StartStopHotkeyButton, "F9");
+        _preferences.PeekArmHotkey = ExtractRecordedHotkey(PeekHotkeyButton, "F8");
+        _preferences.RemoveLastHotkey = ExtractRecordedHotkey(RemoveHotkeyButton, "Q");
         _preferences.ModeSwitchSessionChoice = ModeSwitchChoiceBox.SelectedValue?.ToString() ?? "Ask";
         _preferences.ShowAdvancedFilters = ShowAdvancedFiltersCheckBox.IsChecked == true;
         _preferences.PlayHotkeySounds = PlaySoundsCheckBox.IsChecked == true;
@@ -157,6 +228,25 @@ public partial class SettingsView : UserControl
                 RestartApplication();
             }
         }
+    }
+
+    private void NormalizeCleanTimingThresholds()
+    {
+        _preferences.CleanFastMaxTotalMs = Math.Max(0, _preferences.CleanFastMaxTotalMs);
+        _preferences.CleanPerfectMaxTotalMs = Math.Max(_preferences.CleanFastMaxTotalMs, _preferences.CleanPerfectMaxTotalMs);
+        _preferences.CleanJustInTimeMinTotalMs = Math.Max(_preferences.CleanPerfectMaxTotalMs, _preferences.CleanJustInTimeMinTotalMs);
+    }
+
+    private static string ExtractRecordedHotkey(Button button, string fallback)
+    {
+        string text = button.Content?.ToString() ?? string.Empty;
+        const string prefix = "Record:";
+        if (text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            string value = text[prefix.Length..].Trim();
+            if (!string.IsNullOrWhiteSpace(value)) return value;
+        }
+        return fallback;
     }
 
     private void UpdateCalibrationPreview()
@@ -436,12 +526,25 @@ public partial class SettingsView : UserControl
         return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double parsed) ? parsed : fallback;
     }
 
+    private static int ParseInt(string value, int fallback)
+    {
+        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed) ? parsed : fallback;
+    }
+
     private void OpenDataFolderButton_Click(object sender, RoutedEventArgs e)
     {
         string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "StrafeLab", "sessions");
         Directory.CreateDirectory(folder);
         Process.Start(new ProcessStartInfo("explorer.exe", folder) { UseShellExecute = true });
     }
+
+
+    public void SetDemoButtonVisible(bool visible)
+    {
+        if (ShowDemoButton != null) ShowDemoButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void ShowDemoButton_Click(object sender, RoutedEventArgs e) => ShowDemoRequested?.Invoke();
 
     private void BackButton_Click(object sender, RoutedEventArgs e)
     {

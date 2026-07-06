@@ -10,6 +10,14 @@ namespace StrafeLab;
 
 public partial class ConclusionsView : UserControl
 {
+    public FrameworkElement ConclusionsDemoTarget => ConclusionsTabs;
+
+    public void SelectDemoTab(int index)
+    {
+        if (ConclusionsTabs.Items.Count == 0) return;
+        ConclusionsTabs.SelectedIndex = Math.Clamp(index, 0, ConclusionsTabs.Items.Count - 1);
+        ConclusionsTabs.BringIntoView();
+    }
     private readonly IReadOnlyList<StrafeAttempt> _attempts;
     private readonly AnalysisSettings _settings;
 
@@ -44,12 +52,15 @@ public partial class ConclusionsView : UserControl
         TimingInsightText.Text = BuildTimingInsight();
         DirectionInsightText.Text = BuildDirectionInsight();
         AimInsightText.Text = BuildAimInsight();
+        MistakesInsightText.Text = BuildMistakesInsight();
         ScoreBreakdownText.Text = BuildScoreBreakdown(coaching);
         PracticeText.Text = BuildPracticePlan();
 
         DrawTimingChart();
         DrawDirectionChart();
         DrawResultChart();
+        DrawMistakesChart();
+        DrawMetricsChart();
         DrawAimChart();
     }
 
@@ -60,11 +71,15 @@ public partial class ConclusionsView : UserControl
         int overlap = _attempts.Count(a => a.Grade == TimingGrade.Overlap);
         int late = _attempts.Count(a => a.Grade == TimingGrade.Late);
         int early = _attempts.Count(a => a.Grade == TimingGrade.EarlyClick);
-        if (moving >= overlap && moving >= late && moving > 0) return "Main issue: moving shots. You are clicking while a movement key is still held. Result is logged as Moving even when timing also shows overlap or late.";
-        if (overlap > late && overlap > 0) return "Main issue: overlap. Release the original movement key before the counter key, or increase rapid-trigger release sensitivity if your keyboard is sending overlap.";
-        if (late > overlap && late > 0) return "Main issue: slow counter. Press the opposite key sooner after letting go.";
-        if (early > 0) return "Main issue: early shot. Delay M1 until after the stop has registered.";
-        return "Timing is mostly clean. Focus on reducing spread and reviewing outliers.";
+        var totalTimes = _attempts.Where(a => a.TotalTimeFromReleaseMs.HasValue).Select(a => a.TotalTimeFromReleaseMs!.Value).ToList();
+        string totalTimeText = totalTimes.Count == 0
+            ? ""
+            : $" Avg total time {Avg(totalTimes):0.0} ms, spread {StdDev(totalTimes):0.0} ms. Lower spread means more consistent release-to-click rhythm.";
+        if (moving >= overlap && moving >= late && moving > 0) return "Main issue: moving shots. You are clicking while a movement key is still held. Result is logged as Moving even when timing also shows overlap or late." + totalTimeText;
+        if (overlap > late && overlap > 0) return "Main issue: overlap. Release the original movement key before the counter key, or increase rapid-trigger release sensitivity if your keyboard is sending overlap." + totalTimeText;
+        if (late > overlap && late > 0) return "Main issue: slow counter. Press the opposite key sooner after letting go." + totalTimeText;
+        if (early > 0) return "Main issue: early shot. Delay M1 until after the stop has registered." + totalTimeText;
+        return "Timing is mostly clean. Focus on reducing spread and reviewing outliers." + totalTimeText;
     }
 
     private string BuildDirectionInsight()
@@ -91,6 +106,15 @@ public partial class ConclusionsView : UserControl
         return $"{traced.Count}/{_attempts.Count} attempts have traces. Avg efficiency {eff:0.00}; avg path {path:0.00} deg. Lower efficiency usually means overflicking, zig-zagging, or correcting too late.";
     }
 
+    private string BuildMistakesInsight()
+    {
+        if (_attempts.Count == 0) return "Record a session first.";
+        var rows = BuildMistakeRows();
+        if (rows.All(r => r.Count == 0)) return "No repeated mistakes found. Keep checking the timing and mouse tabs for outliers.";
+        var top = rows.OrderByDescending(r => r.Count).First(r => r.Count > 0);
+        return $"Most common issue: {top.Label} ({top.Count}/{_attempts.Count}, {Pct(top.Count, _attempts.Count):0}%). Use this tab to decide which mistake deserves the next short drill.";
+    }
+
     private string BuildPracticePlan()
     {
         if (_attempts.Count == 0) return "Record a session, then return here.";
@@ -115,9 +139,20 @@ public partial class ConclusionsView : UserControl
                $"Timing: {q.Timing}/{q.TimingMax} - release/counter handoff and overlap control.\n" +
                $"Shot discipline: {q.Shot}/{q.ShotMax} - no moving shots and click inside the target timing window.\n" +
                $"Mouse control: {q.Mouse}/{q.MouseMax} - straight path, micro-correction quality, and avoiding messy overflicks.\n" +
-               $"Consistency: {q.Consistency}/{q.ConsistencyMax} - how tightly attempts cluster instead of relying on one good rep.\n\n" +
+               $"Consistency: {q.Consistency}/{q.ConsistencyMax} - how tightly attempts cluster instead of relying on one good rep.\n" +
+               BuildTotalTimeConsistencyLine() + "\n\n" +
                $"Priority: {coaching.MainIssue}\n\n" +
                $"Fix now: {coaching.PracticePrescription}";
+    }
+
+    private string BuildTotalTimeConsistencyLine()
+    {
+        var totalTimes = _attempts.Where(a => a.TotalTimeFromReleaseMs.HasValue).Select(a => a.TotalTimeFromReleaseMs!.Value).ToList();
+        if (totalTimes.Count == 0) return "Total time: no click-confirmed attempts yet.";
+        double avg = Avg(totalTimes);
+        double stdev = StdDev(totalTimes);
+        string consistency = stdev <= 35 ? "stable" : stdev <= 75 ? "moderate" : "spread out";
+        return $"Total time: avg {avg:0.0} ms, spread {stdev:0.0} ms ({consistency}). Lower spread means better consistency from release to click.";
     }
 
     private void DrawTimingChart()
@@ -150,27 +185,86 @@ public partial class ConclusionsView : UserControl
     private void DrawDirectionChart()
     {
         if (!Ready(DirectionCanvas)) return;
-        Prepare(DirectionCanvas, "Average delay by direction");
+        Prepare(DirectionCanvas, "Average key wait by direction");
+        int total = Math.Max(1, _attempts.Count);
         var rows = new[]
         {
-            (Label: "A>D", Attempts: _attempts.Where(a => a.FromKey == "A" && a.ToKey == "D").ToList()),
-            (Label: "D>A", Attempts: _attempts.Where(a => a.FromKey == "D" && a.ToKey == "A").ToList())
+            (Base: "->", Attempts: _attempts.Where(a => a.FromKey == "A" && a.ToKey == "D").ToList()),
+            (Base: "<-", Attempts: _attempts.Where(a => a.FromKey == "D" && a.ToKey == "A").ToList())
         };
-        DrawBarChart(DirectionCanvas, rows.Select(r => (r.Label, Avg(r.Attempts.Select(a => a.CounterDelayMs)))).ToList(), "ms");
+        var chartRows = rows
+            .Select(r => (Label: $"{r.Base} ({r.Attempts.Count}, {Pct(r.Attempts.Count, total):0}%)", Value: Avg(r.Attempts.Select(a => a.CounterDelayMs)), Text: $"{Avg(r.Attempts.Select(a => a.CounterDelayMs)):+0.0;-0.0;0.0} ms"))
+            .ToList();
+        DrawBarChart(DirectionCanvas, chartRows, "ms");
     }
 
     private void DrawResultChart()
     {
         if (!Ready(ResultCanvas)) return;
         Prepare(ResultCanvas, "Results by direction");
+        var ad = _attempts.Where(a => a.FromKey == "A" && a.ToKey == "D").ToList();
+        var da = _attempts.Where(a => a.FromKey == "D" && a.ToKey == "A").ToList();
         var rows = new[]
         {
-            ("A>D moving", _attempts.Count(a => a.FromKey == "A" && a.ToKey == "D" && a.IsMovingAtClick)),
-            ("A>D clean", _attempts.Count(a => a.FromKey == "A" && a.ToKey == "D" && a.Grade == TimingGrade.Perfect && !a.IsMovingAtClick)),
-            ("D>A moving", _attempts.Count(a => a.FromKey == "D" && a.ToKey == "A" && a.IsMovingAtClick)),
-            ("D>A clean", _attempts.Count(a => a.FromKey == "D" && a.ToKey == "A" && a.Grade == TimingGrade.Perfect && !a.IsMovingAtClick))
-        }.ToList();
-        DrawBarChart(ResultCanvas, rows.Select(r => (r.Item1, (double)r.Item2)).ToList(), "count");
+            (Label: "-> moving", Count: ad.Count(a => a.IsMovingAtClick), Total: ad.Count),
+            (Label: "-> clean", Count: ad.Count(a => a.Grade == TimingGrade.Perfect && !a.IsMovingAtClick), Total: ad.Count),
+            (Label: "<- moving", Count: da.Count(a => a.IsMovingAtClick), Total: da.Count),
+            (Label: "<- clean", Count: da.Count(a => a.Grade == TimingGrade.Perfect && !a.IsMovingAtClick), Total: da.Count)
+        };
+        DrawBarChart(ResultCanvas, rows.Select(r => (r.Label, (double)r.Count, $"{r.Count} ({Pct(r.Count, r.Total):0}%)")).ToList(), "count");
+    }
+
+    private List<(string Label, int Count)> BuildMistakeRows()
+    {
+        int Count(Func<StrafeAttempt, bool> predicate) => _attempts.Count(predicate);
+        return new List<(string Label, int Count)>
+        {
+            ("Moving", Count(a => a.IsMovingAtClick)),
+            ("Overlap", Count(a => a.Grade == TimingGrade.Overlap)),
+            ("Late counter", Count(a => a.Grade == TimingGrade.Late && (!a.ClickFromCounterMs.HasValue || a.ClickFromCounterMs.Value <= _settings.IdealClickMaxAfterCounterMs))),
+            ("Late click", Count(a => a.ClickFromCounterMs.HasValue && a.ClickFromCounterMs.Value > _settings.IdealClickMaxAfterCounterMs)),
+            ("Early click", Count(a => a.Grade == TimingGrade.EarlyClick)),
+            ("Messy mouse", Count(a => a.MouseTrace.Count > 1 && (a.AimControlLabel == "messy" || a.AimControlLabel == "overflick")))
+        };
+    }
+
+    private void DrawMistakesChart()
+    {
+        if (!Ready(MistakesCanvas)) return;
+        Prepare(MistakesCanvas, "Mistakes by related attempt");
+        int total = Math.Max(1, _attempts.Count);
+        var rows = BuildMistakeRows()
+            .OrderByDescending(r => r.Count)
+            .Select(r => (r.Label, (double)r.Count, $"{r.Count} ({Pct(r.Count, total):0}%)"))
+            .ToList();
+        DrawBarChart(MistakesCanvas, rows, "count");
+    }
+
+    private void DrawMetricsChart()
+    {
+        if (!Ready(MetricsCanvas)) return;
+        Prepare(MetricsCanvas, "Tracked metric rates");
+        int total = Math.Max(1, _attempts.Count);
+        int clean = _attempts.Count(a => a.Grade == TimingGrade.Perfect && !a.IsMovingAtClick);
+        int moving = _attempts.Count(a => a.IsMovingAtClick);
+        int traced = _attempts.Count(a => a.MouseTrace.Count > 1);
+        int goodMouse = _attempts.Count(a => a.MouseTrace.Count > 1 && (a.AimControlLabel == "single line" || a.AimControlLabel == "steady" || a.AimControlLabel == "micro-adjust"));
+        int onTimeClick = _attempts.Count(a => a.ClickFromCounterMs.HasValue && a.ClickFromCounterMs.Value >= _settings.IdealClickMinAfterCounterMs && a.ClickFromCounterMs.Value <= _settings.IdealClickMaxAfterCounterMs);
+        int stableCounter = _attempts.Count(a => a.CounterDelayMs >= _settings.IdealCounterMinMs && a.CounterDelayMs <= _settings.IdealCounterMaxMs);
+        var totalTimes = _attempts.Where(a => a.TotalTimeFromReleaseMs.HasValue).Select(a => a.TotalTimeFromReleaseMs!.Value).ToList();
+        double totalSpread = totalTimes.Count == 0 ? 0 : StdDev(totalTimes);
+        double totalConsistency = totalTimes.Count == 0 ? 0 : Math.Clamp(100 - totalSpread, 0, 100);
+        var rows = new List<(string Label, double Value, string Text)>
+        {
+            ("Clean", Pct(clean, total), $"{Pct(clean, total):0}%"),
+            ("Stable key wait", Pct(stableCounter, total), $"{Pct(stableCounter, total):0}%"),
+            ("Good click wait", Pct(onTimeClick, total), $"{Pct(onTimeClick, total):0}%"),
+            ("Total consistency", totalConsistency, $"spread {totalSpread:0} ms"),
+            ("Trace coverage", Pct(traced, total), $"{Pct(traced, total):0}%"),
+            ("Good mouse path", Pct(goodMouse, Math.Max(1, traced)), $"{Pct(goodMouse, Math.Max(1, traced)):0}%"),
+            ("Moving rate", Pct(moving, total), $"{Pct(moving, total):0}%")
+        };
+        DrawBarChart(MetricsCanvas, rows, "%");
     }
 
     private void DrawAimChart()
@@ -193,18 +287,27 @@ public partial class ConclusionsView : UserControl
 
     private static void DrawBarChart(Canvas canvas, IReadOnlyList<(string Label, double Value)> rows, string unit)
     {
-        double w = canvas.ActualWidth, h = canvas.ActualHeight, left = 110, top = 48, rowH = 44;
+        DrawBarChart(canvas, rows.Select(r => (r.Label, r.Value, $"{r.Value:0.0} {unit}")).ToList(), unit);
+    }
+
+    private static void DrawBarChart(Canvas canvas, IReadOnlyList<(string Label, double Value, string Text)> rows, string unit)
+    {
+        double w = canvas.ActualWidth, h = canvas.ActualHeight;
+        double left = Math.Clamp(w * 0.18, 92, 150);
+        double top = 48;
+        double rowH = Math.Max(30, Math.Min(44, (h - top - 16) / Math.Max(1, rows.Count)));
         double max = Math.Max(1, rows.Select(r => Math.Abs(r.Value)).DefaultIfEmpty(1).Max());
         for (int i = 0; i < rows.Count; i++)
         {
             double y = top + i * rowH;
-            AddText(canvas, 18, y + 8, rows[i].Label, 12, Color.FromRgb(245,247,255));
-            double barW = Math.Abs(rows[i].Value) / max * Math.Max(20, w - left - 60);
-            var rect = new Rectangle { Width = barW, Height = 22, Fill = new SolidColorBrush(Color.FromRgb(124, 92, 255)), RadiusX = 6, RadiusY = 6 };
+            AddText(canvas, 18, y + 6, rows[i].Label, 12, Color.FromRgb(245,247,255));
+            double available = Math.Max(20, w - left - 84);
+            double barW = Math.Abs(rows[i].Value) / max * available;
+            var rect = new Rectangle { Width = barW, Height = Math.Max(16, rowH * 0.5), Fill = new SolidColorBrush(Color.FromRgb(124, 92, 255)), RadiusX = 6, RadiusY = 6 };
             Canvas.SetLeft(rect, left);
             Canvas.SetTop(rect, y + 6);
             canvas.Children.Add(rect);
-            AddText(canvas, left + barW + 8, y + 8, $"{rows[i].Value:0.0} {unit}", 12, Color.FromRgb(168,176,200));
+            AddText(canvas, Math.Min(left + barW + 8, w - 74), y + 6, rows[i].Text, 12, Color.FromRgb(168,176,200));
         }
     }
 
@@ -215,6 +318,14 @@ public partial class ConclusionsView : UserControl
     }
 
     private static bool Ready(Canvas canvas) => canvas.ActualWidth > 40 && canvas.ActualHeight > 40;
+    private static double StdDev(IEnumerable<double> values)
+    {
+        var list = values.Where(v => !double.IsNaN(v) && !double.IsInfinity(v)).ToList();
+        if (list.Count <= 1) return 0;
+        double avg = list.Average();
+        return Math.Sqrt(list.Sum(v => Math.Pow(v - avg, 2)) / list.Count);
+    }
+
     private static double Avg(IEnumerable<double> values) { var list = values.ToList(); return list.Count == 0 ? 0 : list.Average(); }
     private static double Pct(int n, int total) => total == 0 ? 0 : n * 100.0 / total;
     private static double MapY(double value, double min, double max, double top, double height) => top + height - (value - min) / (max - min) * height;

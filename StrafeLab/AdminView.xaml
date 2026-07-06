@@ -18,6 +18,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Grid Margin="4,0,4,12">
@@ -27,10 +28,10 @@
             </Grid.ColumnDefinitions>
             <StackPanel>
                 <TextBlock Text="Admin stats" FontSize="34" FontWeight="Bold" />
-                <TextBlock x:Name="SubtitleText" Text="Aggregated summary stats from players who chose to share non-personal practice data." Style="{StaticResource Muted}" />
+                <TextBlock x:Name="SubtitleText" Text="Backend role access. In Supabase, set public.profiles.app_role to 'admin' or 'moderator'." Style="{StaticResource Muted}" />
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <Button x:Name="ModsButton" Content="Mods (0)" Click="ModsButton_Click" Margin="0,0,8,0" Background="#29324A" ToolTip="Manage users who can view the Admin stats page." />
+                <Button x:Name="ModsButton" Content="Mods (0)" Click="ModsButton_Click" Margin="0,0,8,0" Background="#29324A" ToolTip="Admins only. Mods can view stats but cannot manage mods." />
                 <Button Content="Refresh" Click="RefreshButton_Click" Margin="0,0,8,0" />
                 <Button Content="Back" Click="BackButton_Click" Background="#29324A" />
             </StackPanel>
@@ -42,7 +43,23 @@
             <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Attempts" Style="{StaticResource Muted}"/><TextBlock x:Name="AttemptsText" Text="0" Style="{StaticResource MetricValue}"/></StackPanel></Border>
             <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Moving rate" Style="{StaticResource Muted}"/><TextBlock x:Name="MovingRateText" Text="0%" Style="{StaticResource MetricValue}"/></StackPanel></Border>
         </UniformGrid>
+
         <Border Grid.Row="2" Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="Capture tuning" FontSize="20" FontWeight="SemiBold" />
+                <TextBlock Text="Local safety values for counter-strafe/Peek detection. Lower mouse caps if Peek mode starts lagging or recording movement for too long." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,10" />
+                <UniformGrid Columns="5" Margin="0,0,0,10">
+                    <StackPanel Margin="0,0,10,0"><TextBlock Text="Counter pair ms" Style="{StaticResource Muted}"/><TextBox x:Name="AdminCounterPairWindowBox" /></StackPanel>
+                    <StackPanel Margin="0,0,10,0"><TextBlock Text="Normal trace ms" Style="{StaticResource Muted}"/><TextBox x:Name="AdminMouseTraceMaxBox" /></StackPanel>
+                    <StackPanel Margin="0,0,10,0"><TextBlock Text="Peek trace ms" Style="{StaticResource Muted}"/><TextBox x:Name="AdminPeekTraceMaxBox" /></StackPanel>
+                    <StackPanel Margin="0,0,10,0"><TextBlock Text="Peek points" Style="{StaticResource Muted}"/><TextBox x:Name="AdminPeekTracePointsBox" /></StackPanel>
+                    <StackPanel><TextBlock Text="Stop after click" Style="{StaticResource Muted}"/><TextBox x:Name="AdminPeekResetAfterClickBox" /></StackPanel>
+                </UniformGrid>
+                <Button Content="Save capture tuning" Click="SaveCaptureTuningButton_Click" HorizontalAlignment="Left" Padding="14,8" />
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="3" Style="{StaticResource Card}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -59,7 +76,7 @@
                         <DataGridTextColumn Header="Clean %" Binding="{Binding CleanRate, StringFormat={}{0:0.#}%}" Width="90" />
                         <DataGridTextColumn Header="Moving %" Binding="{Binding MovingRate, StringFormat={}{0:0.#}%}" Width="90" />
                         <DataGridTextColumn Header="Overlap" Binding="{Binding Overlap}" Width="80" />
-                        <DataGridTextColumn Header="Slow" Binding="{Binding Slow}" Width="70" />
+                        <DataGridTextColumn Header="Late" Binding="{Binding Slow}" Width="70" />
                         <DataGridTextColumn Header="Avg counter" Binding="{Binding AverageCounterDelayMs, StringFormat={}{0:0.0} ms}" Width="110" />
                         <DataGridTextColumn Header="Avg click" Binding="{Binding AverageClickDelayMs, StringFormat={}{0:0.0} ms}" Width="100" />
                     </DataGrid.Columns>
@@ -68,7 +85,7 @@
             </Grid>
         </Border>
 
-        <Grid x:Name="ModsOverlay" Grid.RowSpan="3" Visibility="Collapsed" Background="#AA000000">
+        <Grid x:Name="ModsOverlay" Grid.RowSpan="4" Visibility="Collapsed" Background="#AA000000">
             <Border Width="720" MaxHeight="720" HorizontalAlignment="Center" VerticalAlignment="Center" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="18" Padding="18">
                 <Grid>
                     <Grid.RowDefinitions>

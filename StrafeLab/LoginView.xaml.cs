@@ -22,31 +22,24 @@ public partial class LoginView : UserControl
         RefreshState();
     }
 
-    private async void SignInButton_Click(object sender, RoutedEventArgs e)
+    private async void SignInButton_Click(object sender, RoutedEventArgs e) => await SignInAsync();
+    private async void CreateButton_Click(object sender, RoutedEventArgs e) => await CreateAsync();
+
+    private async Task SignInAsync()
     {
         await RunAuthActionAsync(async () =>
         {
-            var message = await _supabase.SignInAsync(EmailBox.Text, PasswordBox.Password);
+            var message = await _supabase.SignInAsync(UsernameBox.Text, PasswordBox.Password);
             AuthChanged?.Invoke();
             return message;
         });
     }
 
-    private async void CreateButton_Click(object sender, RoutedEventArgs e)
+    private async Task CreateAsync()
     {
         await RunAuthActionAsync(async () =>
         {
-            var message = await _supabase.SignUpAsync(EmailBox.Text, PasswordBox.Password, UsernameBox.Text);
-            AuthChanged?.Invoke();
-            return message;
-        });
-    }
-
-    private async void ShareStatsButton_Click(object sender, RoutedEventArgs e)
-    {
-        await RunAuthActionAsync(async () =>
-        {
-            var message = await _supabase.SignInAnonymouslyAsync(AnonymousNameBox.Text);
+            var message = await _supabase.SignUpAsync(UsernameBox.Text, PasswordBox.Password);
             AuthChanged?.Invoke();
             return message;
         });
@@ -66,7 +59,7 @@ public partial class LoginView : UserControl
     {
         _supabase.ForgetLocalSession();
         RefreshState();
-        StatusText.Text = "Cloud sharing is off. StrafeLab will stay local for this run and show this first-time screen again next launch.";
+        StatusText.Text = "Local-only mode is active. You can still create an online profile later from Profile.";
         AuthChanged?.Invoke();
         LocalOnlyRequested?.Invoke();
     }
@@ -77,12 +70,7 @@ public partial class LoginView : UserControl
     {
         if (e.Key != Key.Enter) return;
         e.Handled = true;
-        await RunAuthActionAsync(async () =>
-        {
-            var message = await _supabase.SignInAsync(EmailBox.Text, PasswordBox.Password);
-            AuthChanged?.Invoke();
-            return message;
-        });
+        await SignInAsync();
     }
 
     private async Task RunAuthActionAsync(Func<Task<string>> action)
@@ -95,7 +83,7 @@ public partial class LoginView : UserControl
         }
         catch (Exception ex)
         {
-            StatusText.Text = ex.Message;
+            StatusText.Text = ToCleanError(ex.Message);
         }
         finally
         {
@@ -106,16 +94,13 @@ public partial class LoginView : UserControl
     private void RefreshState()
     {
         BackButton.Visibility = _startupWelcome ? Visibility.Collapsed : Visibility.Visible;
-        AccountTitleText.Text = _supabase.IsSignedIn
-            ? "Account"
-            : (_startupWelcome ? "Welcome to StrafeLab" : "Choose how you want to use StrafeLab");
+        AccountTitleText.Text = _supabase.IsSignedIn ? "Account" : "Welcome to StrafeLab";
         AccountSubtitleText.Text = _supabase.IsSignedIn
-            ? "Manage your account and synced practice summaries."
-            : (_startupWelcome ? "Choose a privacy option or sign in to continue." : "Choose how you want to use StrafeLab.");
-        StatusText.Text = _supabase.IsSignedIn ? $"Signed in as {_supabase.DisplayName}." : (_startupWelcome ? "Pick one option below to open StrafeLab." : "Not signed in.");
+            ? "Your online profile is active."
+            : "Online is recommended for synced CS2 practice stats. Local-only is optional.";
+        StatusText.Text = _supabase.IsSignedIn ? $"Signed in as {_supabase.DisplayName}." : "Create or sign in with username and password.";
         SignOutButton.Visibility = _supabase.IsSignedIn ? Visibility.Visible : Visibility.Collapsed;
         SignOutButton.IsEnabled = _supabase.IsSignedIn;
-        ShareStatsButton.IsEnabled = !_supabase.IsSignedIn;
         FullOptOutButton.IsEnabled = true;
     }
 
@@ -124,7 +109,31 @@ public partial class LoginView : UserControl
         SignInButton.IsEnabled = !busy;
         CreateButton.IsEnabled = !busy;
         SignOutButton.IsEnabled = !busy && _supabase.IsSignedIn;
-        ShareStatsButton.IsEnabled = !busy && !_supabase.IsSignedIn;
         FullOptOutButton.IsEnabled = !busy;
+    }
+
+    private static string ToCleanError(string raw)
+    {
+        string text = raw ?? string.Empty;
+        string lower = text.ToLowerInvariant();
+        if (lower.Contains("invalid login") || lower.Contains("invalid credentials"))
+            return "Username or password is incorrect. Check the fields or create a new online profile.";
+        if (lower.Contains("user already") || lower.Contains("already registered") || lower.Contains("already exists"))
+            return "This username already exists. Use Sign in instead.";
+        if (lower.Contains("password") && (lower.Contains("weak") || lower.Contains("at least")))
+            return "Password is too weak. Use at least 6 characters.";
+        if (lower.Contains("email_address_invalid") || lower.Contains("email address") && lower.Contains("invalid"))
+            return "The generated username login address was rejected by Supabase. This build now uses a valid hidden login domain; update the app and try creating the account again.";
+        if (lower.Contains("email_not_confirmed") || lower.Contains("email not confirmed"))
+            return "Supabase email confirmation is enabled, but StrafeLab uses username/password accounts without email verification. Turn off email confirmation in Supabase Auth settings, then try again.";
+        if (lower.Contains("rate limit"))
+            return "Supabase is rate-limiting auth requests. Wait a minute and try again.";
+        if (lower.Contains("network") || lower.Contains("connection") || lower.Contains("timed out"))
+            return "Could not reach Supabase. Check internet connection, firewall, or project status.";
+        if (lower.Contains("username") && lower.Contains("least 3"))
+            return "Username must be at least 3 characters.";
+        if (text.StartsWith("Supabase", StringComparison.OrdinalIgnoreCase))
+            return "Cloud action failed. " + text;
+        return string.IsNullOrWhiteSpace(text) ? "Cloud action failed. Try again." : text;
     }
 }

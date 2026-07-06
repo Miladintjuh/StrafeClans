@@ -78,8 +78,8 @@
                 <Button x:Name="ArmButton" Content="Arm rep [F8]" Click="ArmButton_Click" Margin="0,0,8,0" />
                 <Button x:Name="ClearButton" Content="Clear" Click="ClearButton_Click" Background="#29324A" Margin="0,0,8,0" IsEnabled="False" />
                 <Button x:Name="LiveViewButton" Content="Live" Click="LiveViewButton_Click" Background="#29324A" Margin="0,0,8,0" />
-                <Button x:Name="ConclusionsButton" Content="Conclusions" Click="ConclusionsButton_Click" Background="#29324A" Margin="0,0,8,0" />
-                <Button Content="Back to trainer" Click="CloseButton_Click" Background="#29324A" />
+                <Button x:Name="ConclusionsButton" Content="Conclusions" Click="ConclusionsButton_Click" Background="#29324A" Margin="0,0,8,0" Visibility="Collapsed" />
+                <Button Content="Back to trainer" Click="CloseButton_Click" Background="#29324A" Visibility="Collapsed" />
             </StackPanel>
         </Grid>
 
@@ -299,5 +299,28 @@
                 </StackPanel>
             </Border>
         </Grid>
+
+        <Border x:Name="SingleRepOverlay" Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="90" Background="#AA000000" Visibility="Collapsed">
+            <Border Width="620" MaxWidth="680" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#FFF2B8" BorderBrush="#FFCE45" BorderThickness="3" CornerRadius="20" Padding="22">
+                <StackPanel>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="SingleRepTitleText" Text="Peek rep result" Foreground="#111827" FontSize="24" FontWeight="Bold" />
+                        <Button Grid.Column="1" Content="×" Click="SingleRepCloseButton_Click" Background="#172036" Padding="10,5" ToolTip="Close result" />
+                    </Grid>
+                    <TextBlock x:Name="SingleRepSummaryText" Foreground="#172036" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,10" />
+                    <TextBlock x:Name="SingleRepAdviceText" Foreground="#172036" FontSize="14" LineHeight="21" TextWrapping="Wrap" />
+                    <TextBlock x:Name="SingleRepHintText" Text="Press W or S to arm the next rep and clear this result. F8 also arms a new rep." Foreground="#92400E" FontSize="13" TextWrapping="Wrap" Margin="0,14,0,0" />
+                    <WrapPanel HorizontalAlignment="Right" Margin="0,18,0,0">
+                        <Button Content="Arm next rep [F8]" Click="ArmButton_Click" Margin="0,0,8,0" />
+                        <Button Content="Close" Click="SingleRepCloseButton_Click" Background="#29324A" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
     </Grid>
 </UserControl>

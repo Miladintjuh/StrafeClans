@@ -76,6 +76,14 @@
                         <Button x:Name="SetPrivateButton" Content="Keep private" Click="SetPrivateButton_Click" Background="#29324A" Margin="0,0,8,8" />
                         <Button x:Name="SetPublicButton" Content="Make public" Click="SetPublicButton_Click" Margin="0,0,8,8" />
                     </WrapPanel>
+                    <Separator Margin="0,12,0,12" />
+                    <TextBlock Text="Recovery email" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Text="Optional. Add an email later if you want password reset emails." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,8" />
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <TextBox x:Name="RecoveryEmailBox" Margin="0,0,8,0" />
+                        <Button Grid.Column="1" x:Name="SaveRecoveryEmailButton" Content="Save email" Click="SaveRecoveryEmailButton_Click" Background="#29324A" />
+                    </Grid>
                 </StackPanel>
             </Border>
 

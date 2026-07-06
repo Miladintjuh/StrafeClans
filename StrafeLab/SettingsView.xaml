@@ -40,6 +40,7 @@
                 <TextBlock Text="Adjust calibration, judgment windows, hotkeys, visible columns, and all app colors." Style="{StaticResource Muted}" />
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="ShowDemoButton" Content="Show me the demo" Click="ShowDemoButton_Click" Background="#29324A" Margin="0,0,8,0" />
                 <Button Content="Apply" Click="ApplyButton_Click" Margin="0,0,8,0" />
                 <Button Content="Back" Click="BackButton_Click" Background="#29324A" />
             </StackPanel>
@@ -60,7 +61,7 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource Card}">
+                    <Border x:Name="CalibrationCard" Grid.Row="0" Grid.Column="0" Style="{StaticResource Card}">
                         <StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Game calibration" FontSize="20" FontWeight="SemiBold" />
@@ -89,12 +90,15 @@
                             <TextBlock Text="Counter-strafe and click windows used by the trainer, analytics, and reports." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,16" />
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="180" /><ColumnDefinition Width="128" /></Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                 <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Counter min"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Minimum acceptable release-to-counter delay. Smaller values may be overlap unless inside HE tolerance."/></StackPanel><TextBox Grid.Row="0" Grid.Column="1" x:Name="CounterMinBox" Margin="0,0,0,10"/>
                                 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Counter max"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Maximum acceptable release-to-counter delay. Higher values are labeled slow/late."/></StackPanel><TextBox Grid.Row="1" Grid.Column="1" x:Name="CounterMaxBox" Margin="0,0,0,10"/>
                                 <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Click min"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Minimum acceptable counter-to-click delay. Lower values are labeled early shot."/></StackPanel><TextBox Grid.Row="2" Grid.Column="1" x:Name="ClickMinBox" Margin="0,0,0,10"/>
                                 <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Click max"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Maximum useful counter-to-click delay. Higher values are slow shots."/></StackPanel><TextBox Grid.Row="3" Grid.Column="1" x:Name="ClickMaxBox" Margin="0,0,0,10"/>
-                                <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,10,0"><TextBlock Text="HE tolerance"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Hall-effect/rapid-trigger tolerance in ms. Tiny overlaps inside this tolerance are not treated as real mistakes."/></StackPanel><TextBox Grid.Row="4" Grid.Column="1" x:Name="KeyboardOverlapToleranceBox"/>
+                                <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="HE tolerance"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Hall-effect/rapid-trigger tolerance in ms. Tiny overlaps inside this tolerance are not treated as real mistakes."/></StackPanel><TextBox Grid.Row="4" Grid.Column="1" x:Name="KeyboardOverlapToleranceBox" Margin="0,0,0,10"/>
+                                <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Clean fast max"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Clean attempts with total time at or below this are labeled fast clean in What happened."/></StackPanel><TextBox Grid.Row="5" Grid.Column="1" x:Name="CleanFastMaxBox" Margin="0,0,0,10"/>
+                                <StackPanel Grid.Row="6" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Clean perfect max"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Clean attempts above fast max and at or below this are labeled perfect clean."/></StackPanel><TextBox Grid.Row="6" Grid.Column="1" x:Name="CleanPerfectMaxBox" Margin="0,0,0,10"/>
+                                <StackPanel Grid.Row="7" Orientation="Horizontal" Margin="0,0,10,0"><TextBlock Text="Just-in-time min"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Clean attempts at or above this total time, but still inside the clean window, are labeled just-in-time clean."/></StackPanel><TextBox Grid.Row="7" Grid.Column="1" x:Name="CleanJustInTimeMinBox"/>
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -107,11 +111,14 @@
                             </StackPanel>
                             <TextBlock Text="Settings used by the 5e_aimhub Peek mode." Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,16" />
                             <Grid>
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="180" /><ColumnDefinition Width="128" /></Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="210" /><ColumnDefinition Width="128" /></Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                 <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Clean max"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Peek mode clean timing upper bound for release-to-counter delay."/></StackPanel><TextBox Grid.Row="0" Grid.Column="1" x:Name="PeekCleanMaxBox" Margin="0,0,0,10"/>
                                 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Overlap tol"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Peek mode overlap tolerance. Negative delays inside this window can still be treated as usable."/></StackPanel><TextBox Grid.Row="1" Grid.Column="1" x:Name="PeekOverlapToleranceBox" Margin="0,0,0,10"/>
-                                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,10,0"><TextBlock Text="Spray hold"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="M1 hold duration in ms that is treated as a spray hold in Peek mode."/></StackPanel><TextBox Grid.Row="2" Grid.Column="1" x:Name="PeekSprayHoldBox"/>
+                                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Spray hold"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="M1 hold duration in ms that is treated as a spray hold in Peek mode."/></StackPanel><TextBox Grid.Row="2" Grid.Column="1" x:Name="PeekSprayHoldBox" Margin="0,0,0,10"/>
+                                <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Max mouse ms"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Safety cap: stop recording a Peek rep's mouse trace after this many ms from step-out."/></StackPanel><TextBox Grid.Row="3" Grid.Column="1" x:Name="PeekMouseTraceMaxBox" Margin="0,0,0,10"/>
+                                <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Max trace points"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Safety cap: maximum mouse points kept per Peek activation. Lower this if Peek mode lags."/></StackPanel><TextBox Grid.Row="4" Grid.Column="1" x:Name="PeekMouseTracePointsBox" Margin="0,0,0,10"/>
+                                <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,0,10,0"><TextBlock Text="Stop after click"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Stop adding mouse movement this many ms after first M1 if the reset movement has not happened yet."/></StackPanel><TextBox Grid.Row="5" Grid.Column="1" x:Name="PeekResetAfterClickBox"/>
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -125,9 +132,9 @@
                             <Grid Margin="0,14,0,0">
                                 <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="132" /></Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Start/stop"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Global hotkey to start/stop the active mode. In Peek mode, this controls the Peek session."/></StackPanel><ComboBox Grid.Row="0" Grid.Column="1" x:Name="StartStopHotkeyBox" Margin="0,0,0,10"/>
-                                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Arm peek rep"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Global hotkey to arm exactly one Peek mode rep."/></StackPanel><ComboBox Grid.Row="1" Grid.Column="1" x:Name="PeekHotkeyBox" Margin="0,0,0,10"/>
-                                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Remove latest"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Global hotkey to remove the latest normal counter-strafe attempt."/></StackPanel><ComboBox Grid.Row="2" Grid.Column="1" x:Name="RemoveHotkeyBox" Margin="0,0,0,10"/>
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Start/stop"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Click Record, then press the key you want to use globally."/></StackPanel><Button Grid.Row="0" Grid.Column="1" x:Name="StartStopHotkeyButton" Click="RecordHotkeyButton_Click" Tag="StartStop" Margin="0,0,0,10"/>
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Arm peek rep"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Click Record, then press the key for one Peek rep."/></StackPanel><Button Grid.Row="1" Grid.Column="1" x:Name="PeekHotkeyButton" Click="RecordHotkeyButton_Click" Tag="Peek" Margin="0,0,0,10"/>
+                                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Remove latest"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Click Record, then press the key to remove the latest normal attempt."/></StackPanel><Button Grid.Row="2" Grid.Column="1" x:Name="RemoveHotkeyButton" Click="RecordHotkeyButton_Click" Tag="Remove" Margin="0,0,0,10"/>
                                 <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Default traces"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Default number of recent mouse traces drawn in the overlay."/></StackPanel><TextBox Grid.Row="3" Grid.Column="1" x:Name="DefaultTraceCountBox" Margin="0,0,0,10"/>
                                 <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,10,10"><TextBlock Text="Switch while live"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Controls what happens when you switch between the main trainer and Peek mode while a session is recording."/></StackPanel><ComboBox Grid.Row="4" Grid.Column="1" x:Name="ModeSwitchChoiceBox" Margin="0,0,0,10"/>
                                 <StackPanel Grid.Row="5" Grid.ColumnSpan="2">
@@ -142,7 +149,7 @@
                         <StackPanel>
                             <StackPanel Orientation="Horizontal"><TextBlock Text="Recent-attempt columns" FontSize="20" FontWeight="SemiBold"/><TextBlock Style="{StaticResource InfoIcon}" ToolTip="Choose which columns appear in the normal counter-strafe attempts table."/></StackPanel>
                             <WrapPanel Margin="0,14,0,0">
-                                <CheckBox x:Name="UseColumnCheckBox" Content="Use"/><CheckBox x:Name="IndexColumnCheckBox" Content="#"/><CheckBox x:Name="DirectionColumnCheckBox" Content="Direction"/><CheckBox x:Name="CounterDelayColumnCheckBox" Content="Counter delay"/><CheckBox x:Name="ClickDelayColumnCheckBox" Content="Click delay"/><CheckBox x:Name="MistakesColumnCheckBox" Content="Mistakes"/><CheckBox x:Name="ResultColumnCheckBox" Content="Result"/><CheckBox x:Name="WhatHappenedColumnCheckBox" Content="What happened"/>
+                                <CheckBox x:Name="UseColumnCheckBox" Content="Use" Visibility="Collapsed"/><CheckBox x:Name="IndexColumnCheckBox" Content="#"/><CheckBox x:Name="DirectionColumnCheckBox" Content="Direction"/><CheckBox x:Name="CounterDelayColumnCheckBox" Content="Key wait"/><CheckBox x:Name="ClickDelayColumnCheckBox" Content="Click wait"/><CheckBox x:Name="MistakesColumnCheckBox" Content="Mistakes"/><CheckBox x:Name="ResultColumnCheckBox" Content="Result"/><CheckBox x:Name="WhatHappenedColumnCheckBox" Content="What happened"/>
                             </WrapPanel>
                         </StackPanel>
                     </Border>

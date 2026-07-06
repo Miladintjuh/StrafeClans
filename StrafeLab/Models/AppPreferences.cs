@@ -11,12 +11,19 @@ public sealed class AppPreferences
     public bool PlayHotkeySounds { get; set; } = true;
     public int DefaultTraceCount { get; set; } = 24;
     public string ModeSwitchSessionChoice { get; set; } = "Ask";
+    public bool GuidedDemoSeen { get; set; }
 
     public double CounterMinMs { get; set; } = 0;
     public double CounterMaxMs { get; set; } = 80;
     public double ClickMinMs { get; set; } = 0;
     public double ClickMaxMs { get; set; } = 160;
     public double HallEffectToleranceMs { get; set; } = 8;
+    public double CleanFastMaxTotalMs { get; set; } = 90;
+    public double CleanPerfectMaxTotalMs { get; set; } = 145;
+    public double CleanJustInTimeMinTotalMs { get; set; } = 190;
+    public double CounterPairWindowMs { get; set; } = 400;
+    public double MouseTraceMaxMs { get; set; } = 750;
+    public int MouseTraceMaxPoints { get; set; } = 180;
 
     public double Dpi { get; set; } = 1600;
     public double Sensitivity { get; set; } = 0.4;
@@ -27,6 +34,9 @@ public sealed class AppPreferences
     public double PeekCleanMaxMs { get; set; } = 45;
     public double PeekOverlapToleranceMs { get; set; } = 8;
     public double PeekSprayHoldMs { get; set; } = 180;
+    public double PeekMouseTraceMaxMs { get; set; } = 900;
+    public int PeekMouseTraceMaxPoints { get; set; } = 180;
+    public double PeekResetMouseAfterClickMs { get; set; } = 250;
 }
 
 public sealed class ColorPreferences
